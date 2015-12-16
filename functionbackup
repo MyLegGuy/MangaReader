@@ -1,0 +1,51 @@
+function getnumbers(_name, _chapter, _page)
+
+if not pcall(function()
+	string = Network.requestString("http://www.mangareader.net/" .. _name .. "/" .. tostring(_chapter) .. "/" .. tostring(_page))
+	end
+	) then
+return false,false
+end
+
+a,b = string.find(string, (".mangareader.net/" .. _name .. "/" .. tostring(_chapter) .. "/" .. _name .. "-"),1,true)
+if a==nil and b==nil then
+	return false,false
+	end
+a,b = string.find(string, (".mangareader.net/" .. _name .. "/" .. tostring(_chapter) .. "/" .. _name .. "-"),b,true)
+
+
+if a==nil and b==nil then
+if not pcall(function()
+	stringb = Network.requestString("http://www.mangareader.net/" .. _name .. "/" .. tostring(_chapter) .. "/" .. tostring(_page+1))
+	end
+	) then
+stringb=nil
+a,b = string.find(string, (".mangareader.net/" .. _name .. "/" .. tostring(_chapter) .. "/" .. _name .. "-"),1,true)
+else
+return false,false
+end
+end
+
+numero=(a+string.len((".mangareader.net/" .. name .. "/" .. tostring(_chapter) .. "/" .. name .. "-")))
+stringnumbers=""
+
+while true do
+if tonumber(string.sub(string, numero, numero))~=nil then
+stringnumbers = (stringnumbers .. string.sub(string, numero, numero))
+numero=numero+1
+else
+break
+end
+end
+
+if (string.sub(string,a-3,a-3)~="/") then
+_subdomain=string.sub(string,a-3,a-1)
+else
+_subdomain=string.sub(string,a-2,a-1)
+end
+
+_currentnumber=tonumber(stringnumbers)
+
+
+return _currentnumber, _subdomain
+end
