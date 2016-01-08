@@ -1,13 +1,5 @@
 System.setCpuSpeed(NEW_3DS_CLOCK)
 
-function happyfunction()
-while true do
-	break
-end
-end
-happyfunction()
-happyfunction()
-
 local prefix=""
 local number=1
 local x=0
@@ -32,7 +24,7 @@ local chapter=1
 local name="the-gamer"
 local currentnumber=0
 local savenumber=1
-local subdomain="error"
+local subdomain="Working..."
 local numpages=-1
 
 local doshutdown=true
@@ -62,6 +54,21 @@ Screen.flip()
 end
 
 function loadoptions()
+
+if (Controls.check(Controls.read(),KEY_B)) then
+	System.deleteFile("/MangaReaderOptions.cfg");
+	prefix=""
+	number=1
+	folder = "/Manga/"
+	filetype = ".jpg"
+	numbertype=1
+	startnumber=1
+	dpadspecial=0
+	speed=10
+	zeros=0
+	return;
+end
+
 fileStream = (io.open("/MangaReaderOptions.cfg",FREAD))
 
 os = io.read(fileStream,2,io.read(fileStream,0,2))
@@ -92,22 +99,10 @@ Screen.debugPrint(0, 32+32+16, prefix, Color.new(255,255,255), TOP_SCREEN)
 Screen.debugPrint(0, 32+32+32, "hi", Color.new(255,255,255), TOP_SCREEN)
 Screen.debugPrint(0, 64+32+16, pastnumbero, Color.new(255,255,255), TOP_SCREEN)
 Screen.debugPrint(0, 64+32+32, "Those are the loaded options.", Color.new(255,255,255), TOP_SCREEN)
-Screen.debugPrint(0, 64+32+32+16, "Press A to continue, B to delete the options.", Color.new(255,255,255), TOP_SCREEN)
+Screen.debugPrint(0, 64+32+32+16, "Press A to continue. Hold B on start to delete", Color.new(255,255,255), TOP_SCREEN)
 Screen.flip()
 
-if (Controls.check(Controls.read(),KEY_B)) then
-	System.deleteFile("/MangaReaderOptions.cfg");
-	prefix=""
-	number=1
-	folder = "/Manga/"
-	filetype = ".jpg"
-	numbertype=1
-	startnumber=1
-	dpadspecial=0
-	speed=10
-	zeros=0
-	break;
-end
+
 if (Controls.check(Controls.read(),KEY_A)) then
 	break;
 end
@@ -892,8 +887,18 @@ numpages=1
 string=nil
 i=nil
 
-
+if not pcall(function()
 string = Network.requestString("http://www.mangareader.net/" .. name .. "/" .. tostring(chapter) .. "/1")
+end) then
+
+Screen.waitVblankStart()
+Screen.refresh()
+Screen.clear(TOP_SCREEN)
+Screen.debugPrint(0, 0, "No internet.", Color.new(255,255,255), TOP_SCREEN)
+Screen.flip()
+System.wait(3000)
+return
+end
 
 while true do
 
@@ -1200,7 +1205,7 @@ end
 if Controls.check(pad,KEY_A) then
 if menu==0 then
 happy = System.listDirectory((folder .. (dir[selected+offset].name .. "/")))
-for i=1, #dir do
+for i=1, #happy do
 System.deleteFile(folder .. dir[selected+offset].name .. "/" .. happy[i].name)
 end
 System.deleteDirectory((folder .. (dir[selected+offset].name)))
