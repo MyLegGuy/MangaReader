@@ -34,6 +34,8 @@ local savename="/Manga/aManga/"
 --image = Screen.loadImage("a.jpg")
 
 
+pagereturn=0
+
 
 --=================================================================
 --=================================================================
@@ -184,8 +186,13 @@ if System.doesFileExist( folder .. z .. filetype) then
 image = Screen.loadImage( folder .. z .. filetype)
 imagewidth = Screen.getImageWidth(image)
 imageheight = Screen.getImageHeight(image)
+if pagereturn==0 then
 x=imagewidth-400
 y=0
+elseif pagereturn==1 then
+x=0
+y=0
+end
 return true
 else
 return (folder .. z .. filetype)
@@ -483,6 +490,12 @@ Screen.debugPrint(50, 80, "Number of additional zeros.", Color.new(255,255,255),
 Screen.debugPrint(112, 112, "Check for updates", Color.new(255,255,255), BOTTOM_SCREEN)
 --Screen.debugPrint(35, 112, "Activate new 3ds mode. (No differnece)", Color.new(255,255,255), BOTTOM_SCREEN)
 
+if pagereturn==0 then
+Screen.debugPrint(75, 128, "Return: Top right", Color.new(255,137,0), BOTTOM_SCREEN)
+else
+Screen.debugPrint(75, 128, "Return: Top left", Color.new(255,137,0), BOTTOM_SCREEN)
+end
+
 if dpadspecial==1 then
 Screen.debugPrint(75, 96, "Dpad switches pages too.", Color.new(0,255,0), BOTTOM_SCREEN)
 else
@@ -574,6 +587,12 @@ end
 end
 
 elseif selected==9 then
+if pagereturn==0 then
+	pagereturn=1
+else
+	pagereturn=0
+end
+elseif selected==10 then
 end
 end
 if (Controls.check(pad,KEY_START)) then
@@ -587,8 +606,8 @@ end
 end
 if (Controls.check(pad,KEY_DDOWN)) then
 selected=selected+1
-if selected>8 then
-selected=8
+if selected>9 then
+selected=9
 end
 end
 end
@@ -1211,6 +1230,8 @@ end
 System.deleteDirectory((folder .. (dir[selected+offset].name)))
 happy=nil
 dir=System.listDirectory(folder)
+offset=0
+selected=0
 return
 elseif menu==1 then
 
