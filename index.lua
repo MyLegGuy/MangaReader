@@ -650,7 +650,7 @@ selected=4
 end
 
 Screen.debugPrint(130, 0, "Manga Reader", Color.new(0,255,94), TOP_SCREEN)
-Screen.debugPrint(0, 224, "V 1.8.7", Color.new(0,255,255), TOP_SCREEN)
+Screen.debugPrint(0, 224, "V 1.8.8", Color.new(0,255,255), TOP_SCREEN)
 
 Screen.debugPrint(130, 0, "Read", Color.new(255,255,255), BOTTOM_SCREEN)
 Screen.debugPrint(130, 16, "Download", Color.new(255,255,255), BOTTOM_SCREEN)
@@ -693,13 +693,6 @@ pad=1
 oldpad=1
 options()
 elseif selected==4 then
-Screen.waitVblankStart()
-Screen.refresh()
-Screen.clear(BOTTOM_SCREEN)
-Screen.debugPrint(0, 0, "Quick! You have 3 seconds to push", Color.new(255,255,255), BOTTOM_SCREEN)
-Screen.debugPrint(0,16," L+R+B+Down! Or wait through loop.", Color.new(255,255,255),BOTTOM_SCREEN)
-Screen.flip()
-System.wait(3000)
 System.exit()
 elseif selected==5 then
 System.setCpuSpeed(OLD_3DS_CLOCK)
@@ -799,7 +792,8 @@ Screen.debugPrint(0, 0, "This feature downloads manga from", Color.new(255,255,2
 Screen.debugPrint(0, 16, "http://mangareader.net. I am not", Color.new(255,255,255), BOTTOM_SCREEN)
 Screen.debugPrint(0, 32, "responsible for any content hosted", Color.new(255,255,255), BOTTOM_SCREEN)
 Screen.debugPrint(0, 48, "there.", Color.new(255,255,255), BOTTOM_SCREEN)
-
+Screen.debugPrint(0, 80, "Tutorial on my thread, or a video", Color.new(255,255,255), BOTTOM_SCREEN)
+Screen.debugPrint(0, 96, "at http://tinyurl.com/z5ut89z", Color.new(255,255,255), BOTTOM_SCREEN)
 
 if menu>8 then
 menu=2
@@ -981,6 +975,7 @@ function choosemanga()
 folder="/Manga/"
 dir={}
 dir = System.listDirectory(folder)
+table.sort(dir, function (a, b) return (a.name:lower() < b.name:lower() ) end)
 selected=1
 offset=0
 returntotitle=0
@@ -1037,6 +1032,7 @@ if (Controls.check(pad,KEY_X)) then
 folder=(folder .. (dir[selected+offset].name .. "/"))
 dir={}
 dir = System.listDirectory(folder)
+table.sort(dir, function (a, b) return (a.name:lower() < b.name:lower() ) end)
 selected=1
 offset=0
 if dir[1]==nil then
@@ -1044,6 +1040,7 @@ quickdisplayxy("Nothing found in the folder you entered.",0,0)
 System.wait(3000)
 folder="/"
 dir = System.listDirectory(folder)
+table.sort(dir, function (a, b) return (a.name:lower() < b.name:lower() ) end)
 end
 end
 
@@ -1057,6 +1054,7 @@ end
 end
 
 dir = System.listDirectory(folder)
+table.sort(dir, function (a, b) return (a.name:lower() < b.name:lower() ) end)
 selected=1
 offset=0
 end
