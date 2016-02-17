@@ -1,3 +1,4 @@
+--http://kissmanga.com/Manga/Mayonaka-Lolita/Vol-001-Ch-001-Read-Online?id=114160
 System.setCpuSpeed(NEW_3DS_CLOCK)
 
 local prefix=""
@@ -16,7 +17,7 @@ local dpadspecial=0
 local speed=10
 local zeros=0
 
-local version=2
+local version=3
 
 local screens=true;
 local reallifeinfo=false;
@@ -231,7 +232,7 @@ end
 
 
 function read(readnumber)
-
+life_battery = System.getBatteryLife()
 if (System.doesFileExist( folder .. "page.txt")) then
 fileStream = io.open((folder .. "page.txt"),FREAD)
 happytemp = io.read(fileStream,0,4)
@@ -264,6 +265,9 @@ if music==true then
 Sound.play(wav,LOOP)
 end
 
+atimer = Timer.new()
+
+
 while true do
 	Screen.waitVblankStart()
 	Screen.refresh()
@@ -271,6 +275,11 @@ while true do
 	Screen.clear(BOTTOM_SCREEN)
 pad = Controls.read()
 tchx,tchy = Controls.readTouch()
+
+if Timer.getTime(atimer)>=60000 then
+Timer.reset(atimer)
+life_battery = System.getBatteryLife()
+end
 
 if music==true then Sound.updateStream() end
 
@@ -418,6 +427,7 @@ end
 end
 
 if reallifeinfo==true then
+
 h,m,s = System.getTime()
 if h>11 then
 h=h-12
@@ -432,6 +442,10 @@ else
 Screen.debugPrint(16, 224, (tostring(h) .. ":" .. tostring(m) .. " " .. unit), Color.new(255,255,255), BOTTOM_SCREEN)
 end
 Screen.debugPrint(222, 224, ("Page: " .. tostring(number)), Color.new(255,255,255), BOTTOM_SCREEN)
+
+
+--Screen.debugPrint(110, 224, ("Battery:" .. life_battery), Color.new(255,255,255), BOTTOM_SCREEN)
+
 end
 
 --==========================================================================================================
@@ -650,7 +664,7 @@ selected=4
 end
 
 Screen.debugPrint(130, 0, "Manga Reader", Color.new(0,255,94), TOP_SCREEN)
-Screen.debugPrint(0, 224, "V 1.8.8", Color.new(0,255,255), TOP_SCREEN)
+Screen.debugPrint(0, 224, "V 1.8.9", Color.new(0,255,255), TOP_SCREEN)
 
 Screen.debugPrint(130, 0, "Read", Color.new(255,255,255), BOTTOM_SCREEN)
 Screen.debugPrint(130, 16, "Download", Color.new(255,255,255), BOTTOM_SCREEN)
@@ -670,6 +684,13 @@ Screen.debugPrint(130, 64, "Enable o3ds mode", Color.new(0,255,0), BOTTOM_SCREEN
 elseif selected==6 then
 Screen.debugPrint(130, 80, "Secret-er option.", Color.new(0,255,0), BOTTOM_SCREEN)
 end
+
+
+
+
+
+
+
 
 if pad~=oldpad then
 if (Controls.check(pad,KEY_A)) then
@@ -765,6 +786,7 @@ function mangadownloadsetup()
 pad=Controls.read()
 oldpad=pad
 menu=2
+loadOptionsNumber=1;
 while true do
 pad=Controls.read()
 Screen.waitVblankStart()
@@ -781,8 +803,8 @@ Screen.debugPrint(16, 64, ("Chapter: " .. tostring(chapter)), Color.new(255,255,
 --Screen.debugPrint(16, 96, ("Screens on:" .. tostring(screens)), Color.new(255,255,255), TOP_SCREEN)
 Screen.debugPrint(16, 80, ("Save folder:" .. savename), Color.new(255,255,255), TOP_SCREEN)
 --Screen.debugPrint(16, 128, ("Shutdown when done:" .. tostring(doshutdown)), Color.new(255,255,255), TOP_SCREEN)
-Screen.debugPrint(16, 96, ("[Save options]"), Color.new(255,255,255), TOP_SCREEN)
-Screen.debugPrint(16, 112, ("[Load options]"), Color.new(255,255,255), TOP_SCREEN)
+Screen.debugPrint(16, 96, ("[Save options] - " .. loadOptionsNumber), Color.new(255,255,255), TOP_SCREEN)
+Screen.debugPrint(16, 112, ("[Load options] - " .. loadOptionsNumber), Color.new(255,255,255), TOP_SCREEN)
 Screen.debugPrint(16, 128, ("Go!"), Color.new(255,255,255), TOP_SCREEN)
 Screen.debugPrint(0, menu*16, (">"), Color.new(255,255,255), TOP_SCREEN)
 
@@ -804,6 +826,10 @@ end
 if pad~=oldpad then
 if (Controls.check(pad,KEY_DDOWN)) then
 menu=menu+1
+elseif (Controls.check(pad,KEY_DLEFT)) then
+loadOptionsNumber=loadOptionsNumber-1;
+elseif (Controls.check(pad,KEY_DRIGHT)) then
+loadOptionsNumber=loadOptionsNumber+1;
 elseif (Controls.check(pad,KEY_DUP)) then
 menu=menu-1
 elseif (Controls.check(pad,KEY_A)) then
@@ -1169,14 +1195,17 @@ end
 
 
 
-fileStream = io.open("/MangaReaderDlOptions.cfg",FCREATE)
+fileStream = io.open("/MangaReaderDlOptions" .. loadOptionsNumber .. ".cfg",FCREATE)
 astring = (tostring(string.len(astring)) .. astring)
 io.write(fileStream,0,astring, string.len(astring))
 io.close(fileStream)
 
 end
 function loaddloptions()
-fileStream = (io.open("/MangaReaderDlOptions.cfg",FREAD))
+if (not (System.doesFileExist("/MangaReaderDlOptions" .. loadOptionsNumber .. ".cfg"))) then
+return
+end
+fileStream = (io.open("/MangaReaderDlOptions" .. loadOptionsNumber .. ".cfg",FREAD))
 
 os = io.read(fileStream,2,io.read(fileStream,0,2))
 io.close(fileStream)
@@ -1206,8 +1235,8 @@ pad=Controls.read()
 Screen.waitVblankStart()
 Screen.refresh()
 Screen.clear(BOTTOM_SCREEN)
-Screen.debugPrint(16, 0, "Delete selected manga", Color.new(255,255,255), BOTTOM_SCREEN)
-Screen.debugPrint(16, 16, "Download next chapter", Color.new(255,255,255), BOTTOM_SCREEN)
+Screen.debugPrint(16, 0, "Delete selected chapter", Color.new(255,255,255), BOTTOM_SCREEN)
+Screen.debugPrint(16, 16, "...", Color.new(255,255,255), BOTTOM_SCREEN)
 Screen.debugPrint(16, 32, "Back", Color.new(255,255,255), BOTTOM_SCREEN)
 Screen.debugPrint(0, menu*16, ">", Color.new(255,255,255), BOTTOM_SCREEN)
 Screen.flip()
