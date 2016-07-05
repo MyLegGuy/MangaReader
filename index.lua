@@ -1,4 +1,3 @@
---http://kissmanga.com/Manga/Mayonaka-Lolita/Vol-001-Ch-001-Read-Online?id=114160
 System.setCpuSpeed(NEW_3DS_CLOCK)
 
 local prefix=""
