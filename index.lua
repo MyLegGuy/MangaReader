@@ -1,1290 +1,1245 @@
+-- Good line.
 System.setCpuSpeed(NEW_3DS_CLOCK)
+-- =======================
+-- READING VARS
+-- =======================
+-- Your current menu/place
+--	0 = mainRead
+--	1 = titleScreen
+--	2 = fileSelector
+--	3 = download
+--	4 = options
+local currentPlace=1;
+-- Current page to be displaying
+local currentPageImage;
+-- Current path pages are in
+local currentPath = "/NewReader/";
+-- Current page being displayed;
+local currentPage=1;
+-- X position in imaage we're at.
+local currentX=0;
+-- Y position in image we're at.
+local currentY=0;
 
-local prefix=""
-local number=1
-local x=0
-local y=0
+--    ======================
+--    PAGE SPECIFIC SETTINGS
+--    (These are changed every time a page is loaded)
+--    ======================
+-- A variable to tell how the page is drawn.
+--	0 = Normal
+--  1 = Just drawn at the top left. No vertical scroll. No horizontal scroll.
+--  2 = No vetical scrolling, only horizontal.
+--  3 = No horiontal scrolling. Vertical only.
+local currentDrawPageMode=0;
+-- The current page's width
+local currentPageWidth;
+-- The current page's height
+local currentPageHeight;
 
-local music=false;
+--      =======================
+--      READING OPTION VARS
+--      =======================
+-- How many pixels the page moves per second
+local moveSpeed=10;
+-- Where you start on the next page.
+	-- True is for the top right, false is for the top left.
+local returnPlace=true;
+-- The current image format for the current manga
+local currentImageFormat="happu!";
+-- Current image name prefix.
+local currentPrefix="angry!";
+-- True if the bottom part of the page should be drawn.
+local drawBottom=true;
+-- Number of pixels the image moves per frame.
+local moveSpeed=15;
+-- Bottom bar is on?
+local bottomBarEnabled=false;
+-- ======================
+-- GENERIC VARS
+-- ======================
+-- White
+local colorWhite = Color.new(255,255,255);
+-- Green
+local colorGreen = Color.new(0,255,255);
+-- Commonly reused variable for the current buttons pressed.
+local pad;
+-- Commonly reused variable for the buttons pressed the last frame
+local oldPad;
+-- Circle pad y
+local circlePadY;
+-- Circle pad x
+local circlePadX;
+-- Touch x
+local tchX=0;
+-- Touch y
+local tchY=0;
+-- is new 3ds?
+local isNew3ds;
+-- ======================
+-- Options
+--	Things the user can change in the options.
+-- ======================
 
-local folder = "/Manga/"
-local filetype = ".jpg"
-local plus=38
-local numbertype=1
-local startnumber=1
-local dpadspecial=0
-local speed=10
-local zeros=0
-
-local version=3
-
-local screens=true;
-local reallifeinfo=false;
-local chapter=1
-local name="the-gamer"
-local currentnumber=0
-local savenumber=1
-local subdomain="Working..."
-local numpages=-1
-
-local doshutdown=true
-
-local savename="/Manga/aManga/"
-
---image = Screen.loadImage("a.jpg")
-
-
-pagereturn=0
-
-
---=================================================================
---=================================================================
---=================================================================
-
-function quickdisplayxy(davar, x, y)
-Screen.waitVblankStart()
-Screen.refresh()
-Screen.debugPrint(x, y, davar, Color.new(255,255,255), TOP_SCREEN)
-Screen.flip()
-end
-
-function quickdisplay(davar)
-Screen.waitVblankStart()
-Screen.refresh()
-Screen.debugPrint(130, 0, davar, Color.new(255,255,255), TOP_SCREEN)
-Screen.flip()
-end
-
-function loadoptions()
-
-if (Controls.check(Controls.read(),KEY_B)) then
-	System.deleteFile("/MangaReaderOptions.cfg");
-	prefix=""
-	number=1
-	folder = "/Manga/"
-	filetype = ".jpg"
-	numbertype=1
-	startnumber=1
-	dpadspecial=0
-	speed=10
-	zeros=0
-	return;
-end
-
-fileStream = (io.open("/MangaReaderOptions.cfg",FREAD))
-
-os = io.read(fileStream,2,io.read(fileStream,0,2))
-io.close(fileStream)
-
--- [inbracks] 2,-2 would return inbrackets
-pastnumbero=0
-dpadspecial=tonumber(string.sub(os,1,1))
-zeros=(tonumber(string.sub(os,4,tonumber(string.sub(os,2,3))+3)))
-pastnumbero=tonumber(string.sub(os,2,3))+3
-speed=tonumber(string.sub(os,pastnumbero+1,pastnumbero+2))
-pastnumbero=pastnumbero+2
-filetype=string.sub(os,pastnumbero+3,tonumber(string.sub(os,pastnumbero+1,pastnumbero+2))+pastnumbero+2)
-pastnumbero=tonumber(string.sub(os,pastnumbero+1,pastnumbero+2))+pastnumbero+2
-prefix=string.sub(os,pastnumbero+3,tonumber(string.sub(os,pastnumbero+1,pastnumbero+2))+pastnumbero+2)
-
-if (Controls.check(Controls.read(),KEY_R)) then
-while true do
-
-Screen.waitVblankStart()
-Screen.refresh()
-Screen.debugPrint(0, 0, os, Color.new(255,255,255), TOP_SCREEN)
-Screen.debugPrint(0, 16, dpadspecial, Color.new(255,255,255), TOP_SCREEN)
-Screen.debugPrint(0, 32, zeros, Color.new(255,255,255), TOP_SCREEN)
-Screen.debugPrint(0, 32+16, speed, Color.new(255,255,255), TOP_SCREEN)
-Screen.debugPrint(0, 32+32, filetype, Color.new(255,255,255), TOP_SCREEN)
-Screen.debugPrint(0, 32+32+16, prefix, Color.new(255,255,255), TOP_SCREEN)
-Screen.debugPrint(0, 32+32+32, "hi", Color.new(255,255,255), TOP_SCREEN)
-Screen.debugPrint(0, 64+32+16, pastnumbero, Color.new(255,255,255), TOP_SCREEN)
-Screen.debugPrint(0, 64+32+32, "Those are the loaded options.", Color.new(255,255,255), TOP_SCREEN)
-Screen.debugPrint(0, 64+32+32+16, "Press A to continue. Hold B on start to delete", Color.new(255,255,255), TOP_SCREEN)
-Screen.flip()
-
-
-if (Controls.check(Controls.read(),KEY_A)) then
-	break;
-end
-
-end
-end
-
+-- =======================
+-- DEBUG
+-- =======================
+debugMode=false;
+if (debugMode) then
+	fpsTimer = Timer.new();
+	frames=0;
+	lastFps=0;
 end
 
 
-function saveoptions(_dpadspecial,_zeros,_speed,_filetype,_prefix)
-happytemp=""
-if (System.doesFileExist("/MangaReaderOptions.cfg")) then
-System.deleteFile("/MangaReaderOptions.cfg")
+-- /////////////////////////////////////////////////////////////////////////////////////
+-- Real stuff incoming...
+-- /////////////////////////////////////////////////////////////////////////////////////
+
+-- Saves the options file with the globla options variables
+function saveOptions()
+	local _fileStream;
+	local _optionsToWrite;
+
+	_optionsToWrite = (moveSpeed .. "," .. tostring(returnPlace))
+
+	_fileStream = io.open("/MangaReader-cfg",FCREATE);
+	io.write(_fileStream,0,forceTripleDigitNumber(#_optionsToWrite), 3);
+	io.write(_fileStream,3,_optionsToWrite,#_optionsToWrite);
+	io.close(_fileStream);
+
+	_fileStream=nil;
+	_optionFileLength=nil;
 end
 
---1, custom, 2, custom, custom
+-- Loads the options files and sets the vaules
+function loadOptions()
+	if (System.doesFileExist("/MangaReader-cfg")==false) then
+		return;
+	end
+	
+	local fileStream;
+	local _optionFileLength;
+	local _loadedString;
+	fileStream = io.open("/MangaReader-cfg",FREAD);
+	_optionFileLength = tonumber(io.read(fileStream,0,3));
+	_loadedString = io.read(fileStream,3,_optionFileLength);
+	io.close(fileStream);
+	fileStream=nil;
+	_optionFileLength=nil;
 
-happytemp=tostring(_dpadspecial)
-happytemp=(happytemp .. (fixnumbersize2(string.len(_zeros)) .. tostring(_zeros)))
-happytemp=(happytemp .. tostring(_speed))
-happytemp=(happytemp .. (fixnumbersize2(string.len(_filetype)) .. tostring(_filetype)))
-happytemp=(happytemp .. (fixnumbersize2(string.len(_prefix)) .. tostring(_prefix)))
-happytemp=(string.len(happytemp) .. happytemp)
+	local _loadedValues = {};
 
-fileStream = (io.open("/MangaReaderOptions.cfg",FCREATE))
+	--string = "cat,dog"
+	_loadedValues[1], _loadedValues[2] = _loadedString:match("([^,]+),([^,]+)")
 
-io.write(fileStream,0,happytemp, string.len(happytemp))
-io.close(fileStream)
+	if (_loadedValues[1]==nil) then
+		System.deleteFile("/MangaReader-cfg");
+	end
 
-happytemp=nil
+	moveSpeed=tonumber(_loadedValues[1]);
+	if (_loadedValues[2]=="true") then
+		returnPlace=true;
+	else
+		returnPlace=false;
+	end
+
+	_loadedValues=nil;
+	_loadedString=nil;
 end
 
-function fixnumbersize2(number)
-if number<100 then
-return (("0" .. tostring(number)))
-else
-	return number
-end
+-- Sets touch position variables.
+function getTouch()
+	tchX,tchY = Controls.readTouch()
 end
 
-function loadnextpage(num)
-
-if image~=nil then
-Screen.freeImage(image)
-image=nil
+-- Waits a number of miliseconds
+function wait(amount)
+	_tempTimer = Timer.new();
+	while (Timer.getTime(_tempTimer)<=amount) do
+	end
+	Timer.destroy(_tempTimer);
 end
 
-
-z=""
-
-if tonumber(zeros)>0 then
-
-if num>9 then
-if num>99 then
-if tonumber(zeros)>2 then
-for k=1, tonumber(zeros)-2 do
-z=("0" .. z)
-end
-end
-else
-if tonumber(zeros)>1 then
-for k=1, tonumber(zeros)-1 do
-z=("0" .. z)
-end
-end
-end
-else
-for k=1, tonumber(zeros) do
-z=("0" .. z)
-end
-end
-end
-
-z=(z .. prefix .. tostring(num))
-
-
-if System.doesFileExist( folder .. z .. filetype) then
-image = Screen.loadImage( folder .. z .. filetype)
-imagewidth = Screen.getImageWidth(image)
-imageheight = Screen.getImageHeight(image)
-if pagereturn==0 then
-x=imagewidth-400
-y=0
-elseif pagereturn==1 then
-x=0
-y=0
-end
-return true
-else
-return (folder .. z .. filetype)
-end
-end
-
-
-
-
-function System.wait(milliseconds)
-   tmp = Timer.new()
-   while Timer.getTime(tmp) < milliseconds do end
-   Timer.destroy(tmp)
-end
-
-
-
-
-function checkoptions()
-if plus<0 then
-plus=0
-end
-end
-
-
---=================================================================
---=================================================================
---=================================================================
-
-
-
-
-
-
-
-
-
-function read(readnumber)
-life_battery = System.getBatteryLife()
-if (System.doesFileExist( folder .. "page.txt")) then
-fileStream = io.open((folder .. "page.txt"),FREAD)
-happytemp = io.read(fileStream,0,4)
-readnumber=tonumber(happytemp)
-number=readnumber
-happytemp=nil
-io.close(fileStream)
-end
-
-if loadnextpage(readnumber)~=true then
-System.deleteFile(folder .. "page.txt")
-
-Screen.waitVblankStart()
-Screen.refresh()
-Screen.debugPrint(0, 0, "Could not load the first page.", Color.new(255,255,255), TOP_SCREEN)
-Screen.debugPrint(0, 150, "It should be:", Color.new(255,255,255), TOP_SCREEN)
-Screen.debugPrint(0, 200, loadnextpage(readnumber), Color.new(255,255,255), TOP_SCREEN)
-Screen.flip()
-
-
-System.wait(5000)
-return
-end
-tchyx=0
-tchy=0
-oldtchx=0
-oldtchy=0
-
-if music==true then
-Sound.play(wav,LOOP)
-end
-
-atimer = Timer.new()
-
-
-while true do
+-- Must run this before drawing
+function startDraw()
 	Screen.waitVblankStart()
 	Screen.refresh()
-	Screen.clear(TOP_SCREEN)
-	Screen.clear(BOTTOM_SCREEN)
-pad = Controls.read()
-tchx,tchy = Controls.readTouch()
-
-if Timer.getTime(atimer)>=60000 then
-Timer.reset(atimer)
-life_battery = System.getBatteryLife()
 end
 
-if music==true then Sound.updateStream() end
-
-cpx,cpy = Controls.readCirclePad()
-cppx,cppy = Controls.readCstickPad()
-
-if tchx~=0 and oldtchx~=0 then
-if tchx~=oldtchx then
-x=x+(oldtchx-tchx)*2
-end
-if tchy~=oldtchy then
-y=y+((oldtchy-tchy)*2)
-end
+-- Must run after drawing
+function endDraw()
+	Screen.flip()
 end
 
-
-if pad~=oldpad then
-
-	if (Controls.check(pad,KEY_R)) then
-		number=number+1
-		if loadnextpage(number)~=true then
-	break
-	end
-	end
-	if (Controls.check(pad,KEY_L)) then
-		number=number-1
-		if loadnextpage(number)~=true then
-		break		
-	end
-	end
-
-
-
-	if (Controls.check(pad,KEY_ZL)) then
-		number=number+1
-		if loadnextpage(number)~=true then
-		break		
-	end
-	end
-
-	if (Controls.check(pad, KEY_X)) then
-	if reallifeinfo==true then reallifeinfo=false else reallifeinfo=true end
-end
-	end
-if (Controls.check(pad,KEY_START)) then
-Screen.freeImage(image)
-image=nil
-oldpad=pad
-if (System.doesFileExist( folder .. "page.txt")) then
-System.deleteFile(folder .. "page.txt")
-end
-happytemp=""
-fileStream = io.open((folder .. "page.txt"),FCREATE)
-if string.len(tostring(number))<4 then
-for i=1, 4-string.len(number) do
-happytemp=(happytemp .. "0")
-end
+-- Clears top and bottom screens.
+function clearScreens()
+	Screen.clear(TOP_SCREEN);
+	Screen.clear(BOTTOM_SCREEN);
 end
 
-io.write(fileStream,0,(happytemp .. tostring(number)), 4)
-io.close(fileStream)
-happytemp=nil
-
-if music==true then
-music=false
-Sound.pause(wav)
-Sound.close(wav)
-Sound.term()
+-- Sets pad to the current controls. Sets oldPad to old pad.
+function getControls()
+	oldPad=pad;
+	pad = Controls.read();
+	circlePadX, circlePadY = Controls.readCirclePad();
 end
 
-break
+-- Returns true if a button is pressed according to pad variable. _toCheck is button to check. Returns false otherwise.
+function isPressed(_toCheck)
+	if (Controls.check(pad,_toCheck)) then
+		return true;
+	end
+	return false;
 end
 
-
-
-
-	if (Controls.check(pad,KEY_DRIGHT)) and dpadspecial==1 then
-				number=number+1
-		if loadnextpage(number)~=true then
-	break
+-- Returns true if a button was just pressed according to pad and oldPad. _toCheck is the button to check. Returns false otherwise.
+function isJustPressed(_toCheck)
+	if (Controls.check(oldPad,_toCheck)==false) then
+		if (Controls.check(pad,_toCheck)) then
+			return true;
+		end
 	end
-	end
-	if (Controls.check(pad,KEY_DLEFT)) and dpadspecial==1 then
-				number=number-1
-		if loadnextpage(number)~=true then
-	break
-	end
-	end
+	return false;
+end
 
-
-	if (Controls.check(pad,KEY_DRIGHT)) or cpx>50 or cppx>50 then
-		x=x+speed
+-- Takes the input number and returns it as a double number string
+function forceDoubleDigitNumber(_num)
+	if (_num<10) then
+		return ("0".. _num);
 	end
-	if (Controls.check(pad,KEY_DLEFT)) or cpx<-50 or cppx<-50 then
-		x=x-speed
+	return tostring(_num);
+end
+
+-- Takes the input number and returns it as a triple number string
+function forceTripleDigitNumber(_num)
+	if (_num<10) then
+		return ("00" .. _num);
+	elseif (_num<100) then
+		return ("0" .. _num)
+	end
+	return _num;
+end
+
+-- ============================================
+-- MAIN READ
+-- =============================================
+
+-- Main reading section
+function mainRead()
+	getControls();
+	startDraw();
+	clearScreens();
+	getMoveInputs();
+	drawPage();
+	if (debugMode) then
+		Screen.debugPrint(0, 0, tostring(lastFps), colorWhite, BOTTOM_SCREEN)
+		Screen.debugPrint(0, 16, tostring(currentDrawPageMode), colorWhite, BOTTOM_SCREEN)
+	end
+	if (bottomBarEnabled) then
+		drawBottomBar();
+	end
+	endDraw();
+	getPageChangeInputs();
+	if (debugMode) then
+		frames=frames+1;
+		if (Timer.getTime(fpsTimer)>=1000) then
+			Timer.reset(fpsTimer);
+			lastFps=frames;
+			frames=0;
+		end
+	end
+end
+
+-- Handles the controls for mainRead.
+function getMoveInputs()
+	if (currentDrawPageMode==0 or currentDrawPageMode==2) then
+		if (isPressed(KEY_DRIGHT) or circlePadX>20) then
+			if (currentX+moveSpeed+400>currentPageWidth) then
+				currentX=currentPageWidth-400;
+			else
+				currentX=currentX+moveSpeed;
+			end
+		elseif (isPressed(KEY_DLEFT) or circlePadX<-20) then
+			if (currentX-moveSpeed<0) then
+				currentX=0;
+			else
+				currentX=currentX-moveSpeed;
+			end
+		end
 	end
 
-	if (Controls.check(pad,KEY_DUP)) or cpy>50 or cppy>50 then
-		y=y-speed
+	if (currentDrawPageMode==0 or currentDrawPageMode==3) then
+		if (isPressed(KEY_DDOWN) or circlePadY<-20) then
+			if (currentY+moveSpeed+240>currentPageHeight) then
+				currentY=currentPageHeight-240;
+			else
+				currentY=currentY+moveSpeed;
+			end
+		elseif (isPressed(KEY_DUP) or circlePadY>20) then
+			if (currentY-moveSpeed<0) then
+				currentY=0;
+			else
+				currentY=currentY-moveSpeed;
+			end
+		end
 	end
-	if (Controls.check(pad,KEY_DDOWN)) or cpy<-50 or cppy<-50 then
-		y=y+speed
+
+	if (isJustPressed(KEY_X)) then
+		if (bottomBarEnabled==false) then
+			bottomBarEnabled=true;
+		else
+			bottomBarEnabled=false;
+		end
+	end
+
+end
+
+function drawBottomBar()
+
+	h,m,s = System.getTime()
+	Screen.fillRect(0, 320, 214, 239, Color.new(0,155,50), BOTTOM_SCREEN)
+	Screen.debugPrint(16, 224, (tostring(h) .. ":" .. tostring(m) .. ":" .. tostring(s)), colorWhite, BOTTOM_SCREEN)
+	Screen.debugPrint(222, 224, ("Page: " .. tostring(currentPage)), colorWhite, BOTTOM_SCREEN)
+
+end
+
+-- Gets the inputs for L and R and startDraw
+function getPageChangeInputs()
+	if (isJustPressed(KEY_R)) then
+		currentPage=currentPage+1;
+		if (loadNextPage()==false) then
+			initializeTitleScreen();
+			currentPlace=1;
+		end
+	elseif (isJustPressed(KEY_L)) then
+		currentPage=currentPage-1;
+		if (loadNextPage()==false) then
+			initializeTitleScreen();
+			currentPlace=1;
+		end
+	end
+	if (isJustPressed(KEY_START)) then
+		destroyMainRead();
+		initializeTitleScreen();
+		currentPlace=1;
+	end
+end
+
+
+function destroyMainRead()
+
+	if (currentPageImage~=nil) then
+	Screen.freeImage(currentPageImage)
+	currentPageImage=nil;
+	end
+
+	fileStream = io.open(currentPath .. "_lastPage",FCREATE);
+	io.write(fileStream,0,tostring(forceTripleDigitNumber(currentPage)), 3)
+	io.close(fileStream);
+	fileStream=nil;
+end
+
+-- Draws the currently loaded page
+function drawPage()
+
+	if (currentDrawPageMode==0) then
+		Screen.drawPartialImage(0,0,currentX,currentY,400,240,currentPageImage,TOP_SCREEN)
+	elseif (currentDrawPageMode==1) then
+		Screen.drawImage(0,0,currentPageImage,TOP_SCREEN)
+	elseif (currentDrawPageMode==2) then
+		Screen.drawPartialImage(0,0,currentX,0,400,currentPageHeight,currentPageImage,TOP_SCREEN)
+	else
+		Screen.drawPartialImage(0,0,0,currentY,currentPageWidth,240,currentPageImage,TOP_SCREEN)
+	end
+	
+	if (drawBottom) then
+		-- 38 is bottom screen offset. Hence x+38.
+		if (currentDrawPageMode==0 or currentPageMode==3) then
+			if (currentPageHeight-(currentY+240))<240 then
+				Screen.drawPartialImage(0,0,currentX+38,currentY+240,320,(currentPageHeight-(currentY+240)),currentPageImage,BOTTOM_SCREEN)
+			else
+				Screen.drawPartialImage(0,0,currentX+38,currentY+240,320,240,currentPageImage,BOTTOM_SCREEN)
+			end
+		end
+	end
+
+end
+
+-- Sets the page specific settigs such as draw mode.
+function getCurrentPageSpecificSettings()
+	currentPageWidth = Screen.getImageWidth(currentPageImage);
+	currentPageHeight = Screen.getImageHeight(currentPageImage);
+
+
+	if currentPageWidth>399 then
+		currentDrawPageMode=2;
+	elseif currentPageHeight>239 then
+		currentDrawPageMode=3;
+	else
+		currentDrawPageMode=1;
+	end
+
+	if (currentPageHeight>239 and currentPageWidth>399) then
+		currentDrawPageMode=0;
+	end
+
+	-- Return to top.
+	if (returnPlace==false) then
+		currentX=0;
+	else
+		if (currentDrawPageMode==0 or currentDrawPageMode==2) then
+			currentX=currentPageWidth-400;
+		end
+	end
+	currentY=0;
+end
+
+-- loads the next page with the current settings
+--	Returns false if it failed. Returns nil otherwise.
+function loadNextPage()
+	-- Frees the last image if it needs to so memory can be freed.
+	if (currentPageImage~=nil) then
+		Screen.freeImage(currentPageImage)
+		currentPageImage=nil;
+	end
+	-- Checks if the next page exists.
+	if ((System.doesFileExist(currentPath .. currentPrefix .. currentPage .. currentImageFormat)==false)) then
+		System.deleteFile(currentPath .. "_lastPage");
+		return false;
+	end
+
+	-- Finally, loads the next page
+	currentPageImage = Screen.loadImage(currentPath .. currentPrefix .. currentPage .. currentImageFormat);
+
+	getCurrentPageSpecificSettings();
+end
+
+-- Finds out number of zeros and format
+-- Sets currentPrefix and imageformat to what it finds.
+-- Returns false if it failed.
+function detectMangaSettings()
+	local _result;
+	_result = detectZeros(currentPath,".jpg");
+	if (_result~=false) then
+		currentPrefix=_result;
+		currentImageFormat=".jpg";
+		return;
+	end
+	_result = detectZeros(currentPath,".png");
+	if (_result~=false) then
+		currentPrefix=_result;
+		currentImageFormat=".png";
+		return;
+	end
+	_result = detectZeros(currentPath,".bmp");
+	if (_result~=false) then
+		currentPrefix=_result;
+		currentImageFormat=".bmp";
+		return;
+	end
+	-- Nothing found, return false.
+	return false;
+end
+
+-- Detects number of zeros using specified file format and path.
+-- Returns the prefix, or false if it couldn't find the stuff.
+function detectZeros(_path, _format)
+	local _workPrefix="";
+	for i=1,8 do
+		if (System.doesFileExist(_path .. _workPrefix .. "1" .. _format)) then
+			return _workPrefix;
+		end
+		_workPrefix = ("0" .. _workPrefix);
+	end
+	return false;
+end
+
+function gotoRead()
+	if System.doesFileExist(currentPath .. "_lastPage") then
+		fileStream = io.open(currentPath .. "_lastPage",FREAD);
+		currentPage = tonumber(io.read(fileStream,0,3));
+		io.close(fileStream);
+		fileStream=nil;
+	else
+		currentPage=1;
+	end
+	currentPlace=0;
+	loadNextPage();
+end
+
+-- =============================================
+-- FILE SELECTOR
+-- =============================================
+local currentDirectory="/Manga/";
+local currentFileList;
+local currentFileSelectorSelected;
+local currentFileSelectorOffset;
+
+local sort_func = function( a,b ) return a.name < b.name end
+
+-- Sorts currentFileList in alphabetical order
+function sortCurrentFileList()
+	table.sort( currentFileList, sort_func )
+end
+
+function initializeFileSelector()
+	currentFileSelectorSelected=1;
+	currentFileSelectorOffset=0;
+	refreshDirectory();
+end
+
+-- In goes selection, returns offset. It took me about an hour to figure this out. :(
+function getOffsetForSelection(_currentSelection)
+	if (_currentSelection<=14) then
+		return 0;
+	end
+	return (_currentSelection-14);
+end
+
+-- Removes a thingie from a file list
+-- _toRemove is thingie to remove
+-- _list is da list
+function removeFromFileList(_toRemove,_list)
+	for i=1,#_list do
+		if (_list[i].name==_toRemove) then
+			table.remove(_list,i);
+			break;
+		end
+	end
+end
+
+-- Sets currentFileList to the list in currentDirectiry
+function refreshDirectory()
+	currentFileList=System.listDirectory(currentDirectory);
+	sortCurrentFileList();
+
+	if (System.doesFileExist(currentDirectory .. "_lastChapter")==true) then
+		-- Remove _lastChapter from list
+		removeFromFileList("_lastChapter",currentFileList)
+
+		local _chapterStringLength;
+		local _lastChapterString;
+		fileStream = io.open(currentDirectory .. "_lastChapter",FCREATE);
+		_chapterStringLength = tonumber(io.read(fileStream,0,2));
+		_lastChapterString = io.read(fileStream,2,_chapterStringLength);
+		io.close(fileStream);
+		fileStream=nil;
+		for i=1,#currentFileList do
+			if (currentFileList[i].name==_lastChapterString) then
+				currentFileSelectorSelected=i;
+				currentFileSelectorOffset=getOffsetForSelection(currentFileSelectorSelected);
+				break;
+			end
+		end
+	end
+
+end
+
+-- For the file selector, draws the list of files in currentFileList vairable.
+function drawList()
+	if (#currentFileList==0) then
+		Screen.debugPrint(0, 16, "Empty directory", colorWhite, TOP_SCREEN)
+		return;
+	end
+	for i=1,14 do
+		Screen.debugPrint(0, i*16, currentFileList[i+currentFileSelectorOffset].name, colorWhite, TOP_SCREEN)
+		if (#currentFileList==i) then
+			break;
+		end
+	end
+	Screen.debugPrint(0, (currentFileSelectorSelected-currentFileSelectorOffset)*16, currentFileList[currentFileSelectorSelected].name, Color.new(0,255,111), TOP_SCREEN)
+end
+
+-- Controls for the file selector
+function fileSelectorControls()
+
+	local pushedDown;
+	local pushedUp;
+	if (isPressed(KEY_L)) then
+		if (isPressed(KEY_DDOWN)) then
+			pushedDown=true;
+		elseif (isPressed(KEY_DUP)) then
+			pushedUp=true;
+		end
+	else
+		if (isJustPressed(KEY_DDOWN)) then
+			pushedDown=true;
+		elseif (isJustPressed(KEY_DUP)) then
+			pushedUp=true;
+		end
 	end
 
 
-
-
-if y<0 then
-	y=0
-end
-if x<0 then
-x=0
-end
-if x+400>imagewidth then
-	x=imagewidth-400
-end
-if y+240>imageheight then
-	y=imageheight-240
-end
-
---====================================================================================================
---====================================================================================================
-
---Screen.drawImage(x,y,image,TOP_SCREEN)
-if imageheight>239 and imagewidth>399 then
-Screen.drawPartialImage(0,0,x,y,400,240,image,TOP_SCREEN)
-
-if (imageheight-(y+240))<240 then
---Screen.drawPartialImage(0,0,x+plus,((imageheight-(imageheight-(y+240)))),320,(imageheight-(y+240)),image,BOTTOM_SCREEN)
-Screen.drawPartialImage(0,0,x+plus,y+240,320,(imageheight-(y+240)),image,BOTTOM_SCREEN)
-else
-Screen.drawPartialImage(0,0,x+plus,y+240,320,240,image,BOTTOM_SCREEN)
-end
-
-else
-
-if imagewidth>399 then
-Screen.drawPartialImage(0,0,x,0,400,imageheight,image,TOP_SCREEN)
-elseif imageheight>239 then
-Screen.drawPartialImage(0,0,0,y,imagewidth,240,image,TOP_SCREEN)
-elseif true==true then
-Screen.drawImage(0,0,image,TOP_SCREEN)
-end
-
-end
-
-if reallifeinfo==true then
-
-h,m,s = System.getTime()
-if h>11 then
-h=h-12
-unit = "PM"
-else
-unit="AM"
-end
-Screen.fillRect(0, 320, 214, 239, Color.new(0,155,50), BOTTOM_SCREEN)
-if m<10 then
-Screen.debugPrint(16, 224, (tostring(h) .. ":" .. "0" .. tostring(m) .. " " .. unit), Color.new(255,255,255), BOTTOM_SCREEN)
-else
-Screen.debugPrint(16, 224, (tostring(h) .. ":" .. tostring(m) .. " " .. unit), Color.new(255,255,255), BOTTOM_SCREEN)
-end
-Screen.debugPrint(222, 224, ("Page: " .. tostring(number)), Color.new(255,255,255), BOTTOM_SCREEN)
-
-
---Screen.debugPrint(110, 224, ("Battery:" .. life_battery), Color.new(255,255,255), BOTTOM_SCREEN)
-
-end
-
---==========================================================================================================
---=======================================================================================================
-
-
-oldtchx=tchx
-oldtchy=tchy
-Screen.flip()
-oldpad = pad
-end
-end
-
-
-
-
-
-
-
-
-
-
-
-
---=================================================================
---=================================================================
---=================================================================
-
-
-
-
-
-
-
-
-function options()
-selected=1
-while true do
-Screen.waitVblankStart()
-Screen.refresh()
-Screen.clear(TOP_SCREEN)
-Screen.clear(BOTTOM_SCREEN)
-pad = Controls.read()
-
-
-
-Screen.debugPrint(130, 0, "Manga Reader", Color.new(0,255,94), TOP_SCREEN)
-Screen.debugPrint(130, 16, "Options", Color.new(50,50,0), TOP_SCREEN)
-
-Screen.debugPrint(100, 0, "Image type", Color.new(255,255,255), BOTTOM_SCREEN)
-Screen.debugPrint(100, 16, "Prefix", Color.new(255,255,255), BOTTOM_SCREEN)
-Screen.debugPrint(100, 32, "Starting number", Color.new(255,255,255), BOTTOM_SCREEN)
-Screen.debugPrint(100, 48, "Back", Color.new(255,255,255), BOTTOM_SCREEN)
-Screen.debugPrint(100, 64, "Speed", Color.new(255,255,255), BOTTOM_SCREEN)
-Screen.debugPrint(50, 80, "Number of additional zeros.", Color.new(255,255,255), BOTTOM_SCREEN)
-Screen.debugPrint(112, 112, "Check for updates", Color.new(255,255,255), BOTTOM_SCREEN)
---Screen.debugPrint(35, 112, "Activate new 3ds mode. (No differnece)", Color.new(255,255,255), BOTTOM_SCREEN)
-
-if pagereturn==0 then
-Screen.debugPrint(75, 128, "Return: Top right", Color.new(255,137,0), BOTTOM_SCREEN)
-else
-Screen.debugPrint(75, 128, "Return: Top left", Color.new(255,137,0), BOTTOM_SCREEN)
-end
-
-if dpadspecial==1 then
-Screen.debugPrint(75, 96, "Dpad switches pages too.", Color.new(0,255,0), BOTTOM_SCREEN)
-else
-Screen.debugPrint(75, 96, "Dpad switches pages too.", Color.new(255,0,0), BOTTOM_SCREEN)
-end
-
-if selected==1 then
-Screen.debugPrint(100, 0, "Image type", Color.new(0,255,0), BOTTOM_SCREEN)
-elseif selected==2 then
-Screen.debugPrint(100, 16, "Prefix", Color.new(0,255,0), BOTTOM_SCREEN)
-elseif selected==3 then
-Screen.debugPrint(100, 32, "Starting number", Color.new(0,255,0), BOTTOM_SCREEN)
-elseif selected==4 then
-Screen.debugPrint(100, 48, "Back", Color.new(0,255,0), BOTTOM_SCREEN)
-elseif selected==5 then
-Screen.debugPrint(100, 64, "Speed", Color.new(0,255,0), BOTTOM_SCREEN)
-elseif selected==6 then
-Screen.debugPrint(50, 80, "Number of additional zeros.", Color.new(0,255,0), BOTTOM_SCREEN)
-elseif selected==8 then
-Screen.debugPrint(112, 112, "Check for updates", Color.new(0,255,0), BOTTOM_SCREEN)
-end
-
-if pad~=oldpad then
-
-if (Controls.check(pad,KEY_A)) then
-if selected==1 then
-filetype = System.startKeyboard(filetype)
-elseif selected==2 then
-prefix=System.startKeyboard(prefix)
-elseif selected==3 then
-happyvar=System.startKeyboard("1")
-startnumber=tonumber(happyvar)
-if startnumber==nil then
-quickdisplay("Not a number.")
-System.wait(3000)
-System.exit()
-end
-happyvar=nil
-elseif selected==4 then
-selected=2
-oldpad=pad
-saveoptions(dpadspecial,zeros,speed,filetype,prefix)
-break
-elseif selected==5 then
-happyvar=System.startKeyboard(tostring(speed))
-speed=tonumber(happyvar)
-if speed==nil or speed>99 then
-quickdisplay("Not a number. Or es greater than 99.")
-System.wait(3000)
-System.exit()
-end
-happyvar=nil
-elseif selected==6 then
-zeros=System.startKeyboard(tostring(zeros))
-elseif selected==7 then
-if dpadspecial==1 then
-dpadspecial=0
-else
-dpadspecial=1
-end
-elseif selected==8 then
-
-if not pcall(function()
-string = Network.requestString("http://mylegguy.x10.mx/MangaReader.txt")
-end
-) then
-Screen.waitVblankStart()
-Screen.refresh()
-Screen.clear(TOP_SCREEN)
-Screen.debugPrint(0, 0, "Could not check for updates. :(", Color.new(255,255,255), TOP_SCREEN)
-Screen.flip()
-System.wait(3000)
-else
-if tonumber(string)>version then
-Screen.waitVblankStart()
-Screen.refresh()
-Screen.clear(TOP_SCREEN)
-Screen.debugPrint(0, 0, "Update avalible! Go get it! Right now!", Color.new(255,255,255), TOP_SCREEN)
-Screen.flip()
-System.wait(3000)
-else
-Screen.waitVblankStart()
-Screen.refresh()
-Screen.clear(TOP_SCREEN)
-Screen.debugPrint(0, 0, "Nope. No new update.", Color.new(255,255,255), TOP_SCREEN)
-Screen.flip()
-System.wait(3000)
-end
-end
-
-elseif selected==9 then
-if pagereturn==0 then
-	pagereturn=1
-else
-	pagereturn=0
-end
-elseif selected==10 then
-end
-end
-if (Controls.check(pad,KEY_START)) then
-System.exit()
-end
-if (Controls.check(pad,KEY_DUP)) then
-selected=selected-1
-if selected<1 then
-selected=1
-end
-end
-if (Controls.check(pad,KEY_DDOWN)) then
-selected=selected+1
-if selected>9 then
-selected=9
-end
-end
-end
-
-
-Screen.flip()
-oldpad = pad
-end
-
-end
-
-
-
-
-
-
-
-
-
---=================================================================
---=================================================================
---=================================================================
-
-
-
-
-
-
-function title()
-selected=1
-while true do
-Screen.waitVblankStart()
-Screen.refresh()
-Screen.clear(TOP_SCREEN)
-Screen.clear(BOTTOM_SCREEN)
-pad = Controls.read()
-
-if selected>4 then
-selected=4
-end
-
-Screen.debugPrint(130, 0, "Manga Reader", Color.new(0,255,94), TOP_SCREEN)
-Screen.debugPrint(0, 224, "V 1.8.9", Color.new(0,255,255), TOP_SCREEN)
-
-Screen.debugPrint(130, 0, "Read", Color.new(255,255,255), BOTTOM_SCREEN)
-Screen.debugPrint(130, 16, "Download", Color.new(255,255,255), BOTTOM_SCREEN)
-Screen.debugPrint(130, 32, "Options", Color.new(255,255,255), BOTTOM_SCREEN)
-Screen.debugPrint(130, 48, "Exit", Color.new(255,255,255), BOTTOM_SCREEN)
-
-if selected==1 then
-Screen.debugPrint(130, 0, "Read", Color.new(0,255,0), BOTTOM_SCREEN)
-elseif selected==2 then
-Screen.debugPrint(130, 16, "Download", Color.new(0,255,0), BOTTOM_SCREEN)
-elseif selected==3 then
-Screen.debugPrint(130, 32, "Options", Color.new(0,255,0), BOTTOM_SCREEN)
-elseif selected==4 then
-Screen.debugPrint(130, 48, "Exit", Color.new(0,255,0), BOTTOM_SCREEN)
-elseif selected==5 then
-Screen.debugPrint(130, 64, "Enable o3ds mode", Color.new(0,255,0), BOTTOM_SCREEN)
-elseif selected==6 then
-Screen.debugPrint(130, 80, "Secret-er option.", Color.new(0,255,0), BOTTOM_SCREEN)
-end
-
-
-
-
-
-
-
-
-if pad~=oldpad then
-if (Controls.check(pad,KEY_A)) then
-if selected==1 then
-pad=1
-oldpad=1
-choosemanga()
-if returntotitle~=1 then
-number=startnumber
-read(startnumber)
-end
-returntotitle=nil
-pad=1
-oldpad=1
-elseif selected==2 then
---mangawarning()
-mangadownloadsetup()
-downloadmanga()
-elseif selected==3 then
-pad=1
-oldpad=1
-options()
-elseif selected==4 then
-System.exit()
-elseif selected==5 then
-System.setCpuSpeed(OLD_3DS_CLOCK)
-elseif selected==6 then
-if music==true then music=false else
-music=true;
-Sound.init()
-wav = Sound.openWav("/MangaReaderBackground.wav",true)
-end
-end
-end
-if (Controls.check(pad,KEY_DUP)) then
-selected=selected-1
-if selected<1 then
-selected=1
-end
-end
-if (Controls.check(pad,KEY_DDOWN)) then
-selected=selected+1
-if selected>4 then
-selected=4
-end
-end
-end
-
-Screen.flip()
-oldpad = pad
-end
-end
-
-
-
-
-
-
-
-
-
-
---======================================================================
---==============================================================
---====================================================================
-
-function mangawarning()
-pad=Controls.read()
-oldpad=pad
-while true do
-pad=Controls.read()
-Screen.waitVblankStart()
-Screen.refresh()
-Screen.clear(TOP_SCREEN)
-
-Screen.debugPrint(0, 0, "This feature downloads manga from", Color.new(255,255,255), TOP_SCREEN)
-Screen.debugPrint(0, 16, "http://mangareader.net. I am not responsible", Color.new(255,255,255), TOP_SCREEN)
-Screen.debugPrint(0, 32, "for any content hosted there.", Color.new(255,255,255), TOP_SCREEN)
-Screen.debugPrint(0, 64, "Press A to continue.", Color.new(255,255,255), TOP_SCREEN)
-
-if pad~=oldpad then
-if (Controls.check(pad,KEY_A)) then
-return
-end
-end
-
-Screen.flip()
-oldpad=pad
-end
-end
-
-function mangadownloadsetup()
-pad=Controls.read()
-oldpad=pad
-menu=2
-loadOptionsNumber=1;
-while true do
-pad=Controls.read()
-Screen.waitVblankStart()
-Screen.refresh()
-Screen.clear(TOP_SCREEN)
-Screen.clear(BOTTOM_SCREEN)
-
-Screen.debugPrint(80, 0, "Manga download settings", Color.new(0,255,0), TOP_SCREEN)
-
-Screen.debugPrint(16, 32, "Name:", Color.new(255,255,255), TOP_SCREEN)
-Screen.debugPrint(16, 48, (name), Color.new(255,255,255), TOP_SCREEN)
-Screen.debugPrint(16, 64, ("Chapter: " .. tostring(chapter)), Color.new(255,255,255), TOP_SCREEN)
---Screen.debugPrint(16, 80, ("Number of pages: " .. tostring(numpages)), Color.new(255,255,255), TOP_SCREEN)
---Screen.debugPrint(16, 96, ("Screens on:" .. tostring(screens)), Color.new(255,255,255), TOP_SCREEN)
-Screen.debugPrint(16, 80, ("Save folder:" .. savename), Color.new(255,255,255), TOP_SCREEN)
---Screen.debugPrint(16, 128, ("Shutdown when done:" .. tostring(doshutdown)), Color.new(255,255,255), TOP_SCREEN)
-Screen.debugPrint(16, 96, ("[Save options] - " .. loadOptionsNumber), Color.new(255,255,255), TOP_SCREEN)
-Screen.debugPrint(16, 112, ("[Load options] - " .. loadOptionsNumber), Color.new(255,255,255), TOP_SCREEN)
-Screen.debugPrint(16, 128, ("Go!"), Color.new(255,255,255), TOP_SCREEN)
-Screen.debugPrint(0, menu*16, (">"), Color.new(255,255,255), TOP_SCREEN)
-
---Screen.debugPrint(16,190,tostring(System.getCpuSpeed()),Color.new(255,255,255),TOP_SCREEN)
-
-Screen.debugPrint(0, 0, "This feature downloads manga from", Color.new(255,255,255), BOTTOM_SCREEN)
-Screen.debugPrint(0, 16, "http://mangareader.net. I am not", Color.new(255,255,255), BOTTOM_SCREEN)
-Screen.debugPrint(0, 32, "responsible for any content hosted", Color.new(255,255,255), BOTTOM_SCREEN)
-Screen.debugPrint(0, 48, "there.", Color.new(255,255,255), BOTTOM_SCREEN)
-Screen.debugPrint(0, 80, "Tutorial on my thread, or a video", Color.new(255,255,255), BOTTOM_SCREEN)
-Screen.debugPrint(0, 96, "at http://tinyurl.com/z5ut89z", Color.new(255,255,255), BOTTOM_SCREEN)
-
-if menu>8 then
-menu=2
-elseif menu<2 then
-menu=8
-end
-
-if pad~=oldpad then
-if (Controls.check(pad,KEY_DDOWN)) then
-menu=menu+1
-elseif (Controls.check(pad,KEY_DLEFT)) then
-loadOptionsNumber=loadOptionsNumber-1;
-elseif (Controls.check(pad,KEY_DRIGHT)) then
-loadOptionsNumber=loadOptionsNumber+1;
-elseif (Controls.check(pad,KEY_DUP)) then
-menu=menu-1
-elseif (Controls.check(pad,KEY_A)) then
-if menu==2 or menu==3 then
-name=System.startKeyboard(name)
-savename=("/Manga/" .. name .. "/" .. "chapter" .. "-" .. tostring(chapter))
-elseif menu==4 then
-chapter = tonumber(System.startKeyboard(chapter))
-savename=("/Manga/" .. name .. "/" .. "chapter" .. "-" .. tostring(chapter))
-elseif menu==5 then
-savename = System.startKeyboard(savename)
-elseif menu==6 then
-savedloptions()
-elseif menu==7 then
-loaddloptions()
-elseif menu==8 then
-break
-end
-end
-end
-
-Screen.flip()
-oldpad=pad
-end
-end
-
-function display(x,y,message, clear)
-Screen.waitVblankStart()
-Screen.refresh()
-if clear==1 then
-Screen.clear(TOP_SCREEN)
-end
-Screen.debugPrint(x, y, message, Color.new(255,255,255), TOP_SCREEN)
-Screen.flip()
-end
-
-function getnumbers(_name, _chapter, _page)
-
-if not pcall(function()
-	string = Network.requestString("http://www.mangareader.net/" .. _name .. "/" .. tostring(_chapter) .. "/" .. tostring(_page))
+	if (pushedDown) then
+		if (currentFileSelectorSelected==#currentFileList) then
+			currentFileSelectorSelected=1;
+			currentFileSelectorOffset=0;
+		else
+			if (currentFileSelectorSelected-currentFileSelectorOffset==14) then
+				currentFileSelectorOffset=currentFileSelectorOffset+1;
+			end
+			currentFileSelectorSelected=currentFileSelectorSelected+1;
+		end
+	elseif (pushedUp) then
+		if (currentFileSelectorSelected==1) then
+			currentFileSelectorSelected=#currentFileList;
+			if (#currentFileList>14) then
+			currentFileSelectorOffset = #currentFileList-14;
+			end
+		else
+			if (currentFileSelectorSelected-currentFileSelectorOffset==1) then
+				currentFileSelectorOffset=currentFileSelectorOffset-1;
+			end
+			currentFileSelectorSelected=currentFileSelectorSelected-1;
+		end
 	end
-	) then
-return false,false
-end
 
-
-a,b = string.find(string, (".mangareader.net/" .. _name .. "/" .. tostring(_chapter) .. "/" .. _name .. "-"),1,true)
-if a==nil and b==nil then
-	return false,false
+	if (isJustPressed(KEY_A)) then
+		currentPath=(currentDirectory .. currentFileList[currentFileSelectorSelected].name .. "/");
+		if (detectMangaSettings()~=false) then
+			createLastChapterFile(currentDirectory,currentFileList[currentFileSelectorSelected].name);
+			destroyFileSelector();
+			gotoRead();
+		else
+			currentDirectory=(currentDirectory .. currentFileList[currentFileSelectorSelected].name .. "/");
+			currentFileSelectorSelected=1;
+			currentFileSelectorOffset=0;
+			refreshDirectory();
+			
+		end
+	elseif (isJustPressed(KEY_B)) then
+		for i=2, string.len(currentDirectory) do
+			if string.sub(currentDirectory,i*-1,i*-1)=="/" then
+				currentDirectory = string.sub(currentDirectory, 0, (i*-1))
+				break
+			end
+		end
+		currentFileSelectorSelected=1;
+		currentFileSelectorOffset=0;
+		refreshDirectory();
 	end
-a,b = string.find(string, (".mangareader.net/" .. _name .. "/" .. tostring(_chapter) .. "/" .. _name .. "-"),b,true)
 
-
-if a==nil and b==nil then
-a,b = string.find(string, (".mangareader.net/" .. _name .. "/" .. tostring(_chapter) .. "/" .. _name .. "-"),1,true)
-end
-
-----------------------------
-
-
-numero=(a+string.len((".mangareader.net/" .. name .. "/" .. tostring(_chapter) .. "/" .. name .. "-")))
-stringnumbers=""
-
-while true do
-if tonumber(string.sub(string, numero, numero))~=nil then
-stringnumbers = (stringnumbers .. string.sub(string, numero, numero))
-numero=numero+1
-else
-break
-end
-end
-
-if (string.sub(string,a-3,a-3)~="/") then
-_subdomain=string.sub(string,a-3,a-1)
-else
-_subdomain=string.sub(string,a-2,a-1)
-end
-
-_currentnumber=tonumber(stringnumbers)
-
-return _currentnumber, _subdomain
-end
-
-function downloadmanga()
-if (screens==false) then
-Controls.disableScreen(TOP_SCREEN)
-Controls.disableScreen(BOTTOM_SCREEN)
-end
-System.createDirectory(savename .. "/")
-splitneeded(savename .. "/")
-
-page=2
-numpages=1
-string=nil
-i=nil
-
-if not pcall(function()
-string = Network.requestString("http://www.mangareader.net/" .. name .. "/" .. tostring(chapter) .. "/1")
-end) then
-
-Screen.waitVblankStart()
-Screen.refresh()
-Screen.clear(TOP_SCREEN)
-Screen.debugPrint(0, 0, "No internet.", Color.new(255,255,255), TOP_SCREEN)
-Screen.flip()
-System.wait(3000)
-return
-end
-
-while true do
-
-a,b = string.find(string, ('<option value="/' .. name .. '/' .. tostring(chapter) .. '/' .. tostring(page) .. '"'),1,true)
-if a==nil then
-break
-end
-numpages=numpages+1
-page=page+1
-end
-
-page=1
-
-
-for i=1,numpages do
-
-Screen.waitVblankStart()
-Screen.refresh()
-Screen.clear(TOP_SCREEN)
-Screen.clear(BOTTOM_SCREEN)
-Screen.debugPrint(0, 0, ("Downloading page " .. tostring(page) .. "/" .. tostring(numpages)), Color.new(255,255,255), TOP_SCREEN)
-Screen.debugPrint(0, 0, ("Subdomain:" .. subdomain), Color.new(255,255,255), BOTTOM_SCREEN)
-Screen.debugPrint(0, 16, ("page:" .. tostring(page)), Color.new(255,255,255), BOTTOM_SCREEN)
-Screen.debugPrint(0, 32, ("currentnumber:" .. tostring(currentnumber)), Color.new(255,255,255), BOTTOM_SCREEN)
-Screen.flip()
-
---[[
-status, err = pcall(function()
-Network.downloadFile(("http://" .. subdomain .. ".mangareader.net/" .. name .. "/" .. tostring(chapter) .. "/" .. name .. "-" .. tostring(currentnumber) .. ".jpg"),("/Manga/" .. savename .. "/" .. tostring(page) .. ".jpg"))
-end)
-]]
---if not status then
-
-
-currentnumber, subdomain = getnumbers(name, chapter, page)
-Network.downloadFile(("http://" .. subdomain .. ".mangareader.net/" .. name .. "/" .. tostring(chapter) .. "/" .. name .. "-" .. tostring(currentnumber) .. ".jpg"),(savename .. "/" .. tostring(page) .. ".jpg"))
-
-page=page+1
-currentnumber=currentnumber+1
-end
-
-
-
-
-if (screens==false) then
-Controls.enableScreen(TOP_SCREEN)
-Controls.enableScreen(BOTTOM_SCREEN)
-end
-if doshutdown==true then
-end
-end
-
-
-
---=================================================================
---=================================================================
---=================================================================
-
-
-function choosemanga()
-folder="/Manga/"
-dir={}
-dir = System.listDirectory(folder)
-table.sort(dir, function (a, b) return (a.name:lower() < b.name:lower() ) end)
-selected=1
-offset=0
-returntotitle=0
-
-if dir[1]==nil then
-quickdisplayxy("No manga found in /Manga/",100,100)
-System.wait(2000)
-returntotitle=1
-return
-end
-
-
-while true do
-Screen.waitVblankStart()
-Screen.refresh()
-Screen.clear(TOP_SCREEN)
-Screen.clear(BOTTOM_SCREEN)
-pad = Controls.read()
-
-Screen.debugPrint(0, 0, folder, Color.new(0,255,0), BOTTOM_SCREEN)
---Screen.debugPrint(0, 100, tostring(selected), Color.new(0,255,0), BOTTOM_SCREEN)
-Screen.debugPrint(0, 16, "Press A to open selected folder as a", Color.new(255,255,255), BOTTOM_SCREEN)
-Screen.debugPrint(0, 32, "a manga folder.", Color.new(255,255,255), BOTTOM_SCREEN)
-Screen.debugPrint(0, 48, "Press X to open selected folder as a", Color.new(255,255,255), BOTTOM_SCREEN)
-Screen.debugPrint(0, 64, "a folder that contains manga folders.", Color.new(255,255,255), BOTTOM_SCREEN)
-Screen.debugPrint(0, 80, "Press B to go back a directory.", Color.new(255,255,255), BOTTOM_SCREEN)
-Screen.debugPrint(0, 96, "Press Y to access the mini-menu.", Color.new(255,255,255), BOTTOM_SCREEN)
-
-
-if #dir<=14 then
-
-for i=1, #dir do
-if selected==i then
-Screen.debugPrint(0, 16*i, dir[i+offset].name, Color.new(0,255,0), TOP_SCREEN)
-else
-Screen.debugPrint(0, 16*i, dir[i+offset].name, Color.new(255,255,255), TOP_SCREEN)
-end
-end
-
-else
-
-for i=1, 14 do
-if selected==i then
-Screen.debugPrint(0, 16*i, dir[i+offset].name, Color.new(0,255,0), TOP_SCREEN)
-else
-Screen.debugPrint(0, 16*i, dir[i+offset].name, Color.new(255,255,255), TOP_SCREEN)
-end
-end
+	if (isJustPressed(KEY_START)) then
+		destroyFileSelector();
+		initializeTitleScreen();
+		currentPlace=1;
+	end
 
 end
 
-if pad~=oldpad then
-if (Controls.check(pad,KEY_X)) then
-folder=(folder .. (dir[selected+offset].name .. "/"))
-dir={}
-dir = System.listDirectory(folder)
-table.sort(dir, function (a, b) return (a.name:lower() < b.name:lower() ) end)
-selected=1
-offset=0
-if dir[1]==nil then
-quickdisplayxy("Nothing found in the folder you entered.",0,0)
-System.wait(3000)
-folder="/"
-dir = System.listDirectory(folder)
-table.sort(dir, function (a, b) return (a.name:lower() < b.name:lower() ) end)
-end
+-- The file selector's main lop.
+function fileSelector()
+startDraw();
+clearScreens();
+drawList();
+Screen.debugPrint(0, 0, currentDirectory, colorWhite, BOTTOM_SCREEN)
+Screen.debugPrint(0, 32, "Press A to open selected directory", colorWhite, BOTTOM_SCREEN)
+Screen.debugPrint(0, 48, "Press B to go back a directory", colorWhite, BOTTOM_SCREEN)
+Screen.debugPrint(0, 64, "Press START to exit to title", colorWhite, BOTTOM_SCREEN)
+Screen.debugPrint(0, 80, "Hold L for really fast movement", colorWhite, BOTTOM_SCREEN)
+endDraw();
+getControls();
+fileSelectorControls();
 end
 
-if (Controls.check(pad, KEY_B)) then
-oldpad=Controls.read()
-for i=2, string.len(folder) do
-if string.sub(folder,i*-1,i*-1)=="/" then
-folder = string.sub(folder, 0, (i*-1))
-break
-end
+function destroyFileSelector()
+	currentFileSelectorSelected=nil;
+	currentFileSelectorOffset=nil;
+	currentFileList=nil;
 end
 
-dir = System.listDirectory(folder)
-table.sort(dir, function (a, b) return (a.name:lower() < b.name:lower() ) end)
-selected=1
-offset=0
+-- Creates the last chapter file.
+-- _createLocation is usually currentDirectory and _folderName is the name of the folder that the lastchapter file will contain.
+function createLastChapterFile(_createLocation, _folderName)
+	fileStream = io.open(_createLocation .. "_lastChapter",FCREATE);
+	io.write(fileStream,0,forceDoubleDigitNumber(#_folderName), 2);
+	io.write(fileStream,2,_folderName, #_folderName);
+	io.close(fileStream);
+	fileStream=nil;
 end
 
-if (Controls.check(pad,KEY_A)) then
-folder=(folder .. (dir[selected+offset].name .. "/"))
-break
+-- =============================================
+-- TITLE SCREEN
+-- =============================================
+local titleScreenSelected;
+
+function initializeTitleScreen()
+	titleScreenSelected=0;
 end
 
-if (Controls.check(pad,KEY_DUP)) then
-selected=selected-1
-if selected<1 then
-if offset>0 then
-offset=offset-1
-selected=1
-else
-if #dir>14 then
-selected=14
-offset=#dir-14
-else
-selected=#dir
-offset=0
-end
-end
-end
-end
-
-if (Controls.check(pad,KEY_DDOWN)) then
-if selected==14 then
-offset=offset+1
-else
-selected=selected+1
-end
-if selected+offset>#dir then
-selected=1
-offset=0
-end
-end
-
-
-if (Controls.check(pad,KEY_START)) then
-returntotitle=1
-break
+function titleScreenControls()
+	if (isJustPressed(KEY_DDOWN)) then
+		if (titleScreenSelected~=3) then
+			titleScreenSelected=titleScreenSelected+1;
+		else
+			titleScreenSelected=0;
+		end
+	elseif (isJustPressed(KEY_DUP)) then
+		if (titleScreenSelected~=0) then
+			titleScreenSelected=titleScreenSelected-1;
+		else
+			titleScreenSelected=3;
+		end
+	elseif (isJustPressed(KEY_A)) then
+		if (titleScreenSelected==0) then
+			destroyTitleScreen();
+			initializeFileSelector();
+			currentPlace=2;
+		elseif (titleScreenSelected==1) then
+			destroyTitleScreen();
+			initializeDownloadMenu();
+			currentPlace=3;
+		elseif (titleScreenSelected==2) then
+			destroyTitleScreen();
+			initializeOptionsMenu();
+			currentPlace=4;
+		elseif (titleScreenSelected==3) then
+			System.exit();
+		end
+	end
 end
 
-if (Controls.check(pad,KEY_Y)) then
-minimenu()
+function titleScreen()
+	getControls();
+	startDraw();
+	clearScreens();
+	titleScreenDraw();
+	endDraw();
+	titleScreenControls();
 end
 
-
+-- Draws the title screen stuff
+function titleScreenDraw()
+	Screen.debugPrint(134, 136, "Manga Reader", colorWhite, TOP_SCREEN)
+	Screen.debugPrint(0, 0, "v2.0", colorWhite, TOP_SCREEN)
+	Screen.debugPrint(150, 120, "Read", colorWhite, BOTTOM_SCREEN)
+	Screen.debugPrint(150, 136, "Download", colorWhite, BOTTOM_SCREEN)
+	Screen.debugPrint(150, 152, "Options", colorWhite, BOTTOM_SCREEN)
+	Screen.debugPrint(150, 168, "Exit", colorWhite, BOTTOM_SCREEN)
+	Screen.debugPrint(134, titleScreenSelected*16+120, ">", colorGreen, BOTTOM_SCREEN)
 end
 
-Screen.flip()
-oldpad = pad
+function destroyTitleScreen()
+	titleScreenSelected=nil;
 end
 
+-- ==========================================================================
+-- NUMPAD
+-- ==========================================================================
+
+-- What you inputed with the numpad. Needs to be converted to number.
+local numpadInput;
+local numpadMessage;
+local numpadActive;
+
+function openNumpad(_message,_default)
+numpadMessage=_message;
+numpadActive=true;
+numpadInput=tostring(_default);
+numpadMainLoop();
+numpadMessage=nil;
+numpadActive=nil;
 end
 
-function mysplit(inputstr, sep)
-        if sep == nil then
-                sep = "%s"
-        end
-        local t={} ; i=1
-        for str in string.gmatch(inputstr, "([^"..sep.."]+)") do
-                t[i] = str
-                i = i + 1
-        end
-        return t
-end
-
-
-
-
-function splitneeded(filepath)
-
-a = mysplit(filepath, "/")
-if #a<1 then
-return
-end
-
-
-for i=1, #a do
-astring=""
-for h=1, i do
-astring = (astring .. "/" .. a[h] )
-end
-System.createDirectory(astring .. "/")
-end
-end
-
-
-
-
-function savedloptions()
-astring=""
-
-astring = (astring .. name .. ",")
-astring = (astring .. chapter .. ",")
-astring = (astring .. numpages .. ",")
-
-if screens==true then
-astring = (astring .. "1" .. ",")
-else
-astring = (astring .. "0" .. ",")
-end
-astring = (astring .. savename .. ",")
-if doshutdown==true then
-astring = (astring .. "1")
-else
-astring = (astring .. "0")
-end
-
-
-
-fileStream = io.open("/MangaReaderDlOptions" .. loadOptionsNumber .. ".cfg",FCREATE)
-astring = (tostring(string.len(astring)) .. astring)
-io.write(fileStream,0,astring, string.len(astring))
-io.close(fileStream)
-
-end
-function loaddloptions()
-if (not (System.doesFileExist("/MangaReaderDlOptions" .. loadOptionsNumber .. ".cfg"))) then
-return
-end
-fileStream = (io.open("/MangaReaderDlOptions" .. loadOptionsNumber .. ".cfg",FREAD))
-
-os = io.read(fileStream,2,io.read(fileStream,0,2))
-io.close(fileStream)
-
-name,chapter,numpages,screens,savename,doshutdown = os:match("([^,]+),([^,]+),([^,]+),([^,]+),([^,]+),([^,]+)")
-chapter = tonumber(chapter)
-numpages = tonumber(numpages)
-
-if screens=="0" then screens=false else screens=true end
-if doshutdown=="0" then doshutdown=false else doshutdown=true end
-
-
-os=nil
-
+function checkNumpadTouch()
+	if (tchY<=60) then
+		if (tchX<=106) then
+			numpadInput = (numpadInput .. "7");
+		elseif (tchX<=212) then
+			numpadInput = (numpadInput .. "8");
+		else
+			numpadInput = (numpadInput .. "9");
+		end
+	elseif (tchY<=120) then
+		if (tchX<=106) then
+			numpadInput = (numpadInput .. "4");
+		elseif (tchX<=212) then
+			numpadInput = (numpadInput .. "5");
+		else
+			numpadInput = (numpadInput .. "6");
+		end
+	elseif (tchY<=180) then
+		if (tchX<=106) then
+			numpadInput = (numpadInput .. "1");
+		elseif (tchX<=212) then
+			numpadInput = (numpadInput .. "2");
+		else
+			numpadInput = (numpadInput .. "3");
+		end
+	elseif (tchY<=240) then
+		if (tchX<=106) then
+			numpadActive=false;
+		elseif (tchX<=212) then
+			numpadInput = (numpadInput .. "0");
+		else
+			numpadInput = string.sub(numpadInput,1,#numpadInput-1)
+		end
+	end
 
 end
 
-
-
-
-
-function minimenu()
-menu=0
-oldpad=Controls.read()
-while true do
-pad=Controls.read()
-Screen.waitVblankStart()
-Screen.refresh()
-Screen.clear(BOTTOM_SCREEN)
-Screen.debugPrint(16, 0, "Delete selected chapter", Color.new(255,255,255), BOTTOM_SCREEN)
-Screen.debugPrint(16, 16, "...", Color.new(255,255,255), BOTTOM_SCREEN)
-Screen.debugPrint(16, 32, "Back", Color.new(255,255,255), BOTTOM_SCREEN)
-Screen.debugPrint(0, menu*16, ">", Color.new(255,255,255), BOTTOM_SCREEN)
-Screen.flip()
-
-if pad~=oldpad then
-if Controls.check(pad,KEY_DUP) then
-menu=menu-1
-end
-if Controls.check(pad,KEY_DDOWN) then
-menu=menu+1
-end
-if Controls.check(pad,KEY_A) then
-if menu==0 then
-happy = System.listDirectory((folder .. (dir[selected+offset].name .. "/")))
-for i=1, #happy do
-System.deleteFile(folder .. dir[selected+offset].name .. "/" .. happy[i].name)
-end
-System.deleteDirectory((folder .. (dir[selected+offset].name)))
-happy=nil
-dir=System.listDirectory(folder)
-offset=0
-selected=0
-return
-elseif menu==1 then
-
-elseif menu==2 then
-return
-end
+function drawNumpad()
+	-- Each segment is 106 x 60
+	Screen.debugPrint(45, 25, "7", colorWhite, BOTTOM_SCREEN)
+	Screen.debugPrint(151, 25, "8", colorWhite, BOTTOM_SCREEN)
+	Screen.debugPrint(257, 25, "9", colorWhite, BOTTOM_SCREEN)
+	--===
+	Screen.debugPrint(45, 85, "4", colorWhite, BOTTOM_SCREEN)
+	Screen.debugPrint(151, 85, "5", colorWhite, BOTTOM_SCREEN)
+	Screen.debugPrint(257, 85, "6", colorWhite, BOTTOM_SCREEN)
+	--===
+	Screen.debugPrint(45, 145, "1", colorWhite, BOTTOM_SCREEN)
+	Screen.debugPrint(151, 145, "2", colorWhite, BOTTOM_SCREEN)
+	Screen.debugPrint(257, 145, "3", colorWhite, BOTTOM_SCREEN)
+	--====
+	Screen.debugPrint(45, 205, "DONE", colorWhite, BOTTOM_SCREEN)
+	Screen.debugPrint(151, 205, "0", colorWhite, BOTTOM_SCREEN)
+	Screen.debugPrint(257, 205, "<-", colorWhite, BOTTOM_SCREEN)
 end
 
-oldpad=pad
+function numpadMainLoop()
+	while (numpadActive) do
+	startDraw();
+	clearScreens();
+	Screen.debugPrint(0, 0, numpadMessage, colorWhite, TOP_SCREEN)
+	Screen.debugPrint(0, 64, numpadInput, colorWhite, TOP_SCREEN)
+
+	drawNumpad()
+	getControls();
+	getTouch();
+
+	if (isJustPressed(KEY_TOUCH)) then
+		checkNumpadTouch();
+	end
+	
+	endDraw();
+	end
 end
 
-if menu<0 then menu=2 end
-if menu>2 then menu=0 end
 
+-- ========================================
+-- OPTIONS MENU
+-- =======================================
+local optionsSelected;
+
+function optionsMenuControls()
+	if (isJustPressed(KEY_DDOWN)) then
+		if (optionsSelected~=1) then
+			optionsSelected=optionsSelected+1;
+		else
+			optionsSelected=0;
+		end
+	elseif (isJustPressed(KEY_DUP)) then
+		if (optionsSelected~=0) then
+			optionsSelected=optionsSelected-1;
+		else
+			optionsSelected=1;
+		end
+	elseif (isJustPressed(KEY_A)) then
+		if (optionsSelected==0) then
+			openNumpad("Enter the speed you want.",moveSpeed)
+			moveSpeed = tonumber(numpadInput);
+		elseif (optionsSelected==1) then
+			if (returnPlace) then
+				returnPlace=false;
+			else
+				returnPlace=true;
+			end
+		end
+	end
+
+	if (isJustPressed(KEY_START)) then
+		saveOptions();
+		currentPlace=1;
+		destroyOptionsMenu();
+		initializeTitleScreen();
+	end
 end
+
+function initializeOptionsMenu()
+	optionsSelected=0;
+end
+
+function optionsMenuDraw()
+	Screen.debugPrint(0, 0, "Options", colorWhite, TOP_SCREEN)
+	Screen.debugPrint(0, 32+(optionsSelected*16), ">", colorGreen, TOP_SCREEN)
+	Screen.debugPrint(16, 32, "Speed - " .. moveSpeed, colorWhite, TOP_SCREEN)
+	if (returnPlace) then
+		Screen.debugPrint(16, 48, "Return location - Top right", colorWhite, TOP_SCREEN)
+	else
+		Screen.debugPrint(16, 48, "Return location - Top left", colorWhite, TOP_SCREEN)
+	end
+	Screen.debugPrint(0, 0, "Up and down to select something", colorWhite, BOTTOM_SCREEN)
+	Screen.debugPrint(0, 16, "Press A to change selected option", colorWhite, BOTTOM_SCREEN)
+	Screen.debugPrint(0, 32, "Press START to go back to the title", colorWhite, BOTTOM_SCREEN)
+end
+
+function optionsMenu()
+	getControls();
+	startDraw();
+	clearScreens();
+	optionsMenuDraw();
+	endDraw();
+	optionsMenuControls();
+end
+
+function destroyOptionsMenu()
+	optionsSelected=nil;
+end
+
+-- ===================================
+-- DOWNLOADING
+-- ==================================
+-- Current chapter number downloading
+local currentDownloadChapterNumber;
+-- current download manga name (in url)
+local currentDownloadName;
+-- the subdomain for the current page on the website
+local currentDownloadSubdomain;
+-- the location to save files in. Ends with /
+local currentDownloadSaveLocation;
+-- The total amount of pages
+local currentDownloadTotalPages;
+-- Number of retries left
+local currentDownloadRetriesLeft;
+-- if it's failed.
+local downloadFailed;
+-- Selected
+local downloadMenuSelected;
+-- Download options file selected
+local downloadOptionsFile;
+
+function initializeDownloadMenu()
+	currentDownloadChapterNumber=1;
+	currentDownloadName="inuyasha";
+	currentDownloadSubdomain="Working...";
+	currentDownloadSaveLocation=("/Manga/" .. currentDownloadName .. "/chapter-" .. currentDownloadChapterNumber .. "/");
+	currentDownloadRetriesLeft=10;
+	downloadMenuSelected=0;
+	downloadFailed=false;
+	downloadOptionsFile=0;
+end
+
+-- Returns page file name random wierd number and subdomain
+function downloadGetUrlData(_mangaName,_mangaChapter,_mangaPageNumber)
+	local _subdomain="";
+	local _fileNumber="";
+
+	local _startImageUrlIndex;
+	local _endImageUrlIndex;
+
+	local _currentPageHtml = safeRequestString("http://www.mangareader.net/" .. _mangaName .. "/" .. _mangaChapter .. "/" .. _mangaPageNumber);
+	if (downloadFailed) then
+		return false, false
+	end
+
+	-- First search, this is a dummy one we don't need if it's not the last page we're dealing with.
+	a,b = string.find(_currentPageHtml, (".mangareader.net/" .. _mangaName .. "/" .. _mangaChapter .. "/" .. _mangaName .. "-"),1,true)
+	-- If it couldn't even find that, we've failed.
+	if a==nil and b==nil then
+		return false,false
+	end
+
+	-- This is usually the one we want
+	_startImageUrlIndex,_endImageUrlIndex = string.find(_currentPageHtml, (".mangareader.net/" .. _mangaName .. "/" .. _mangaChapter .. "/" .. _mangaName .. "-"),b,true);
+
+	-- But if this is the last page in the chapter, that one won't be found.
+	if _startImageUrlIndex==nil and _endImageUrlIndex==nil then
+		-- In that case, we need the first search result.
+		_startImageUrlIndex = a;
+		_endImageUrlIndex = b;
+		-- No longer need these.
+		a=nil;
+		b=nil;
+	end
+
+	-- Okay, we found the start and end index of the url we want. Let's find the number and subdomain now!
+	--===================================
+	-- THis is the index at which the image numer starts at.
+	local numberStartLocation;
+	local searchingForNumbersNumero;
+
+
+	numberStartLocation=(_startImageUrlIndex+string.len(".mangareader.net/" .. _mangaName .. "/" .. _mangaChapter .. "/" .. _mangaName .. "-"))
+	searchingForNumbersNumero=numberStartLocation;
+
+	-- This will find the image number. Keep getting the next character, determine if it's a number, if so, add it on to the string and keep going.
+	while true do
+	if tonumber(string.sub(_currentPageHtml, searchingForNumbersNumero, searchingForNumbersNumero))~=nil then
+		_fileNumber = (_fileNumber .. string.sub(_currentPageHtml, searchingForNumbersNumero, searchingForNumbersNumero))
+		searchingForNumbersNumero=searchingForNumbersNumero+1
+	else
+	-- We've reached the end; something that's not a number.
+		break
+	end
+	end
+
+	-- Checks if there's a slash 3 places back. If not, 3 digit subdomain. Otherwise, 2 digit sumdomain.
+	-- Do I even need 3 digit subdomain? I'm not sure.
+	if (string.sub(_currentPageHtml,_startImageUrlIndex-3,_startImageUrlIndex-3)~="/") then
+		_subdomain=string.sub(_currentPageHtml,_startImageUrlIndex-3,_startImageUrlIndex-1)
+	else
+		_subdomain=string.sub(_currentPageHtml,_startImageUrlIndex-2,_startImageUrlIndex-1)
+	end
+
+	return _fileNumber,_subdomain;
 end
 
 
 
-
-
-
-
-
-checkoptions()
-System.createDirectory("/Manga/")
-if (System.doesFileExist("/MangaReaderOptions.cfg")) then
-loadoptions()
+function destroyDownloadMenu()
+	currentDownloadChapterNumber=nil;
+	currentDownloadName=nil;
+	currentDownloadSubdomain=nil;
+	currentDownloadSaveLocation=nil;
+	currentDownloadRetriesLeft=nil;
+	currentDownloadTotalPages=nil;
+	downloadFailed=nil;
+	downloadMenuSelected=nil;
+	downloadOptionsFile=nil;
 end
-title()
+
+-- Trys to request string. If it fails, waits 500 milisecodns and retries. Takes one retry every time. If it runs out of retries and fails, returns false.
+function safeRequestString(_requestURL)
+	if not pcall(function()
+	_resultString = Network.requestString(_requestURL)
+	end) then
+		if (currentDownloadRetriesLeft>0) then
+			wait(500);
+			currentDownloadRetriesLeft=currentDownloadRetriesLeft-1;
+			return safeRequestString(_requestURL);
+		else
+			downloadFailed=true;
+			return false;
+		end
+	else
+		return _resultString;
+	end
+end
+
+function downloadFindNumberOfPages()
+	_mangaPageSample = safeRequestString("http://www.mangareader.net/" .. currentDownloadName .. "/" .. tostring(currentDownloadChapterNumber) .. "/1")
+	if (downloadFailed) then
+		return false;
+	end
+	local _checkPage = 2;
+
+	while true do
+	a,b = string.find(_mangaPageSample, ('<option value="/' .. currentDownloadName .. '/' .. tostring(currentDownloadChapterNumber) .. '/' .. tostring(_checkPage) .. '"'),1,true)
+	if a==nil then
+		break
+	end
+		_checkPage=_checkPage+1;
+	end
+	currentDownloadTotalPages=_checkPage-1;
+
+end
+
+-- Downloads
+function downloadPage(_mangaName,_mangaChapter,_mangaPageNumber,_saveLocation)
+	local _subdomain;
+	local _fileNumber;
+	_fileNumber, _subdomain = downloadGetUrlData(_mangaName,_mangaChapter,_mangaPageNumber);
+
+	startDraw();
+	clearScreens();
+	Screen.debugPrint(0, 0, (_mangaPageNumber .. "/" .. currentDownloadTotalPages),colorWhite, TOP_SCREEN)
+	
+	endDraw();
+	--wait(5000)
+
+	Network.downloadFile(("http://" .. _subdomain .. ".mangareader.net/" .. _mangaName .. "/" .. _mangaChapter .. "/" .. _mangaName .. "-" .. _fileNumber .. ".jpg"),(_saveLocation .. _mangaPageNumber .. ".jpg"));
+end
+
+function downloadDoTheThing()
+	System.createDirectory("/Manga/" .. currentDownloadName)
+	System.createDirectory("/Manga/" .. currentDownloadName .. "/chapter-" .. currentDownloadChapterNumber)
+	
+	downloadFindNumberOfPages();
+	
+	for i=1,currentDownloadTotalPages do
+		downloadPage(currentDownloadName,currentDownloadChapterNumber,i,currentDownloadSaveLocation)
+	end
+	--startDraw();
+	--clearScreens();
+	--Screen.debugPrint(0, 0, tostring(currentDownloadTotalPages), Color.new(255,255,255), TOP_SCREEN)
+	--endDraw();
+	--wait(2000)
+end
+
+function downloadMenu()
+	getControls();
+	startDraw();
+	clearScreens();
+	downloadMenuDraw();
+	endDraw();
+	downloadMenuControls();
+end
+
+-- Saves download options with the variables
+function downloadSaveOptions()
+	local _fileStream = io.open(("/MangaReader-cfg-dl-" .. downloadOptionsFile),FCREATE);
+	local _dataToWrite=(currentDownloadName .. "," .. currentDownloadChapterNumber .. "," .. currentDownloadSaveLocation);
+	io.write(_fileStream,0,forceTripleDigitNumber(#_dataToWrite), 3);
+	io.write(_fileStream,3,_dataToWrite,#_dataToWrite);
+	io.close(_fileStream);
+	_fileStream=nil;
+	_dataToWrite=nil;
+end
+
+function downloadLoadOptions()
+	if (System.doesFileExist("/MangaReader-cfg-dl-" .. downloadOptionsFile)==false) then
+		return;
+	end
+
+	local _readData;
+	local _dataSize;
+	local _fileStream = io.open(("/MangaReader-cfg-dl-" .. downloadOptionsFile),FCREATE);
+	
+	_dataSize = tonumber(io.read(_fileStream,0,3));
+	_readData = io.read(_fileStream,3,_dataSize)
+	io.close(_fileStream);
+	
+
+	currentDownloadName, currentDownloadChapterNumber, currentDownloadSaveLocation = _readData:match("([^,]+),([^,]+),([^,]+)")
+	currentDownloadChapterNumber = tonumber(currentDownloadChapterNumber);
+
+	_readData=nil;
+	_fileStream=nil;
+	_dataSize=nil
+
+end
+
+function downloadMenuControls()
+	if (isJustPressed(KEY_DDOWN)) then
+		if (downloadMenuSelected~=7) then
+			downloadMenuSelected=downloadMenuSelected+1;
+		else
+			downloadMenuSelected=0;
+		end
+	elseif (isJustPressed(KEY_DUP)) then
+		if (downloadMenuSelected~=0) then
+			downloadMenuSelected=downloadMenuSelected-1;
+		else
+			downloadMenuSelected=5;
+		end
+	elseif (isJustPressed(KEY_A)) then
+		if (downloadMenuSelected==0) then
+			destroyDownloadMenu();
+			currentPlace=1;
+			initializeTitleScreen();
+		elseif (downloadMenuSelected==1) then
+			currentDownloadName = System.startKeyboard(currentDownloadName);
+			currentDownloadSaveLocation=("/Manga/" .. currentDownloadName .. "/chapter-" .. currentDownloadChapterNumber .. "/")
+		elseif (downloadMenuSelected==2) then
+			openNumpad("Which chapter?",currentDownloadChapterNumber)
+			currentDownloadChapterNumber = tonumber(numpadInput);
+			currentDownloadSaveLocation=("/Manga/" .. currentDownloadName .. "/chapter-" .. currentDownloadChapterNumber .. "/")
+		elseif (downloadMenuSelected==3) then
+			downloadSaveOptions();
+		elseif (downloadMenuSelected==4) then
+			downloadLoadOptions();
+		elseif (downloadMenuSelected==5) then
+			downloadDoTheThing();
+			if (downloadFailed) then
+				showFailed();
+			end
+			destroyDownloadMenu();
+			currentPlace=1;
+			initializeTitleScreen();
+		elseif (downloadMenuSelected==7) then
+			currentDownloadSaveLocation = System.startKeyboard(currentDownloadSaveLocation);
+		end
+		
+	elseif (isJustPressed(KEY_DLEFT)) then
+			if (downloadMenuSelected==2) then
+				if (currentDownloadChapterNumber>1) then
+					currentDownloadChapterNumber=currentDownloadChapterNumber-1;
+					currentDownloadSaveLocation=("/Manga/" .. currentDownloadName .. "/chapter-" .. currentDownloadChapterNumber .. "/")
+				end
+			elseif (downloadMenuSelected==3 or downloadMenuSelected==4) then
+					downloadOptionsFile=downloadOptionsFile-1;
+			end
+	elseif (isJustPressed(KEY_DRIGHT)) then
+			if (downloadMenuSelected==2) then
+					currentDownloadChapterNumber=currentDownloadChapterNumber+1;
+					currentDownloadSaveLocation=("/Manga/" .. currentDownloadName .. "/chapter-" .. currentDownloadChapterNumber .. "/")
+			elseif (downloadMenuSelected==3 or downloadMenuSelected==4) then
+					downloadOptionsFile=downloadOptionsFile+1;
+			end
+	end
+end
+
+
+function showFailed()
+	startDraw();
+	clearScreens();
+	Screen.debugPrint(0, 0, "Failed due to network error", colorWhite, TOP_SCREEN)
+	endDraw();
+	wait(1000);
+end
+-- Draws the title screen stuff
+function downloadMenuDraw()
+	Screen.debugPrint(16, 0, "Back", colorWhite, TOP_SCREEN)
+	Screen.debugPrint(16, 16, ("Name - " .. currentDownloadName), colorWhite, TOP_SCREEN)
+	Screen.debugPrint(16, 32, ("Chapter number - " .. currentDownloadChapterNumber), colorWhite, TOP_SCREEN)
+	Screen.debugPrint(16, 48, "[Save - slot " .. downloadOptionsFile .. "]", colorWhite, TOP_SCREEN)
+	Screen.debugPrint(16, 64, "[Load - slot " .. downloadOptionsFile .. "]", colorWhite, TOP_SCREEN)
+	Screen.debugPrint(16, 80, "Go", colorWhite, TOP_SCREEN)
+	--Screen.debugPrint(16, 96, "Save location:", colorWhite, TOP_SCREEN)
+	--Screen.debugPrint(16, 112, currentDownloadSaveLocation, colorWhite, TOP_SCREEN)
+	Screen.debugPrint(0, 0, "If you don't know how this works,", colorWhite, BOTTOM_SCREEN)
+	Screen.debugPrint(0, 16, "read the tutorial on the thread.", colorWhite, BOTTOM_SCREEN)
+	Screen.debugPrint(0, 32, "(Text and video tutorials avalible)", colorWhite, BOTTOM_SCREEN)
+	
+	Screen.debugPrint(0, downloadMenuSelected*16, ">", colorGreen, TOP_SCREEN)
+end
+
+-- ===================================
+-- FUNCTIONS END
+-- ===================================
+
+getControls();
+getControls();
+initializeTitleScreen();
+
+	-- FPS TEST
+	--[[
+	while (true) do
+		detectMangaSettings();
+		startDraw();
+		clearScreens();
+		Screen.debugPrint(0, 0, (lastFps), colorWhite, TOP_SCREEN)
+		--Screen.debugPrint(0, 32, currentImageFormat, colorWhite, TOP_SCREEN)
+		--Screen.debugPrint(0, 64, (currentPath .. currentPrefix .. currentPage .. currentImageFormat), colorWhite, TOP_SCREEN)
+		endDraw();
+		frames=frames+1;
+		if (Timer.getTime(fpsTimer)>=1000) then
+		Timer.reset(fpsTimer);
+		lastFps=frames;
+		frames=0;
+		end
+	end
+	]]
+
+if (System.getModel()==2 or System.getModel()==4) then
+	isNew3ds=true;
+end
+
+-- Loads options
+loadOptions();
+
+-- This is a loop going on forever that determins where you are in sections.
+while (true) do
+	if (currentPlace==0) then
+		mainRead();
+	elseif (currentPlace==1) then
+		titleScreen();
+	elseif (currentPlace==2) then
+		fileSelector();
+	elseif (currentPlace==3) then
+		downloadMenu();
+	elseif (currentPlace==4) then
+		optionsMenu();
+	end
+end

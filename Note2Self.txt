@@ -1,0 +1,7 @@
+Instructions to include lua in 3dsx.
+
+* Comment out code in main.cpp for loading main script
+* Replace with errMsg = runScript((char*)label, true);
+* Use bin2c on index.lua with output name as index.h and label as label.
+* Name output as index.h and place with main.cpp
+* Put #include "index.h" in main.cpp
