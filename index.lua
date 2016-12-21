@@ -73,6 +73,10 @@ local circlePadX;
 local tchX=0;
 -- Touch y
 local tchY=0;
+-- Old Touch x
+local oldTchX=0;
+-- Old Touch y
+local oldTchY=0;
 -- is new 3ds?
 local isNew3ds;
 -- ======================
@@ -149,6 +153,8 @@ end
 
 -- Sets touch position variables.
 function getTouch()
+	oldTchX = tchX;
+	oldtchy = tchY;
 	tchX,tchY = Controls.readTouch()
 end
 
@@ -305,13 +311,13 @@ end
 
 -- Gets the inputs for L and R and startDraw
 function getPageChangeInputs()
-	if (isJustPressed(KEY_R)) then
+	if (isJustPressed(KEY_R) or isJustPressed(KEY_ZL)) then
 		currentPage=currentPage+1;
 		if (loadNextPage()==false) then
 			initializeTitleScreen();
 			currentPlace=1;
 		end
-	elseif (isJustPressed(KEY_L)) then
+	elseif (isJustPressed(KEY_L) or isJustPressed(KEY_ZR)) then
 		currentPage=currentPage-1;
 		if (loadNextPage()==false) then
 			initializeTitleScreen();
@@ -1051,20 +1057,25 @@ function downloadPage(_mangaName,_mangaChapter,_mangaPageNumber,_saveLocation)
 	Network.downloadFile(("http://" .. _subdomain .. ".mangareader.net/" .. _mangaName .. "/" .. _mangaChapter .. "/" .. _mangaName .. "-" .. _fileNumber .. ".jpg"),(_saveLocation .. _mangaPageNumber .. ".jpg"));
 end
 
+function waitForAPress()
+	while (true) do
+		getControls();
+		if (isJustPressed(KEY_A)) then
+			return;
+		end
+	end
+end
+
 function downloadDoTheThing()
 	System.createDirectory("/Manga/" .. currentDownloadName)
 	System.createDirectory("/Manga/" .. currentDownloadName .. "/chapter-" .. currentDownloadChapterNumber)
 	
-	downloadFindNumberOfPages();
+	downloadFindNumberOfPages()
+	
 	
 	for i=1,currentDownloadTotalPages do
 		downloadPage(currentDownloadName,currentDownloadChapterNumber,i,currentDownloadSaveLocation)
 	end
-	--startDraw();
-	--clearScreens();
-	--Screen.debugPrint(0, 0, tostring(currentDownloadTotalPages), Color.new(255,255,255), TOP_SCREEN)
-	--endDraw();
-	--wait(2000)
 end
 
 function downloadMenu()

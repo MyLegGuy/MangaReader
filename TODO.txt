@@ -6,7 +6,7 @@ Bottom bar (Only battery life left)
 music?
 
 Notes:
-Bottom bar filled rectangle removed due to creating lag
+Bottom bar filled rectangle removed due to creating lag on o3ds
 
 Done:
 Basic prefix autodetection (detects zeros)
