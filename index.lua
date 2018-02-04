@@ -1,3 +1,17 @@
+-- Honestly, I have no idea why I put so much work into these cross-platform constants. I just wanted to see how this would run on lpp-vita.
+PLAT_UNDEFINED = 0
+PLAT_VITA = 1
+PLAT_3DS = 2
+currentPlatform = PLAT_3DS
+if (currentPlatform == PLAT_VITA) then
+	dofile("app0:vita.lua")
+end
+
+dataFilesystemPrefix = "";
+if (currentPlatform == PLAT_VITA) then
+	dataFilesystemPrefix = "ux0:data/MNGA00001"
+end
+
 -- Good line.
 System.setCpuSpeed(NEW_3DS_CLOCK)
 -- =======================
@@ -46,8 +60,8 @@ local moveSpeed=10;
 local returnPlace=true;
 -- The current image format for the current manga
 local currentImageFormat="happu!";
--- Current image name prefix.
-local currentPrefix="angry!";
+-- This is the format string to be used with string.format(<this variable>, <page number>)
+local currentNumberFormatString = "";
 -- True if the bottom part of the page should be drawn.
 local drawBottom=true;
 -- Number of pixels the image moves per frame.
@@ -94,10 +108,24 @@ if (debugMode) then
 	lastFps=0;
 end
 
+-- //////////////////////////////////////////////////
+-- CROSS PLATFORM INCONSISTANT ARGUMENTS
+-- //////////////////////////////////////////////////
+if (currentPlatform == PLAT_VITA) then
+	drawBottom = false;
+end
 
 -- /////////////////////////////////////////////////////////////////////////////////////
 -- Real stuff incoming...
 -- /////////////////////////////////////////////////////////////////////////////////////
+
+function ShowAndWait(textToShow)
+	startDraw();
+	clearScreens();
+	Screen.debugPrint(0, 0, textToShow, colorWhite, TOP_SCREEN)
+	endDraw();
+	waitForAPress();
+end
 
 -- Saves the options file with the globla options variables
 function saveOptions()
@@ -106,7 +134,7 @@ function saveOptions()
 
 	_optionsToWrite = (moveSpeed .. "," .. tostring(returnPlace))
 
-	_fileStream = io.open("/MangaReader-cfg",FCREATE);
+	_fileStream = io.open(dataFilesystemPrefix .. "/MangaReader-cfg",FCREATE);
 	io.write(_fileStream,0,forceTripleDigitNumber(#_optionsToWrite), 3);
 	io.write(_fileStream,3,_optionsToWrite,#_optionsToWrite);
 	io.close(_fileStream);
@@ -117,14 +145,14 @@ end
 
 -- Loads the options files and sets the vaules
 function loadOptions()
-	if (System.doesFileExist("/MangaReader-cfg")==false) then
+	if (System.doesFileExist(dataFilesystemPrefix .. "/MangaReader-cfg")==false) then
 		return;
 	end
 	
 	local fileStream;
 	local _optionFileLength;
 	local _loadedString;
-	fileStream = io.open("/MangaReader-cfg",FREAD);
+	fileStream = io.open(dataFilesystemPrefix .. "/MangaReader-cfg",FREAD);
 	_optionFileLength = tonumber(io.read(fileStream,0,3));
 	_loadedString = io.read(fileStream,3,_optionFileLength);
 	io.close(fileStream);
@@ -188,6 +216,15 @@ function getControls()
 	oldPad=pad;
 	pad = Controls.read();
 	circlePadX, circlePadY = Controls.readCirclePad();
+	if (currentPlatform == PLAT_VITA) then
+		if (pad~=nil and oldPad~=nil and isJustPressed(KEY_POWER)==true) then
+			if (Graphics.debugPrint == GoodDebugPrintA) then
+				Graphics.debugPrint = GoodDebugPrintB
+			else
+				Graphics.debugPrint = GoodDebugPrintA
+			end
+		end
+	end
 end
 
 -- Returns true if a button is pressed according to pad variable. _toCheck is button to check. Returns false otherwise.
@@ -304,7 +341,11 @@ function drawBottomBar()
 
 	h,m,s = System.getTime()
 	Screen.fillRect(0, 320, 214, 239, Color.new(0,155,50), BOTTOM_SCREEN)
-	Screen.debugPrint(16, 224, (tostring(h) .. ":" .. tostring(m) .. ":" .. tostring(s)), colorWhite, BOTTOM_SCREEN)
+	if (h>=13) then
+		Screen.debugPrint(16, 224, string.format("%02d:%02d:%02d PM",h-12,m,s), colorWhite, BOTTOM_SCREEN)
+	else
+		Screen.debugPrint(16, 224, string.format("%02d:%02d:%02d AM",h,m,s), colorWhite, BOTTOM_SCREEN)
+	end
 	Screen.debugPrint(222, 224, ("Page: " .. tostring(currentPage)), colorWhite, BOTTOM_SCREEN)
 
 end
@@ -347,7 +388,7 @@ end
 
 -- Draws the currently loaded page
 function drawPage()
-
+	
 	if (currentDrawPageMode==0) then
 		Screen.drawPartialImage(0,0,currentX,currentY,400,240,currentPageImage,TOP_SCREEN)
 	elseif (currentDrawPageMode==1) then
@@ -357,7 +398,7 @@ function drawPage()
 	else
 		Screen.drawPartialImage(0,0,0,currentY,currentPageWidth,240,currentPageImage,TOP_SCREEN)
 	end
-	
+
 	if (drawBottom) then
 		-- 38 is bottom screen offset. Hence x+38.
 		if (currentDrawPageMode==0 or currentPageMode==3) then
@@ -368,14 +409,12 @@ function drawPage()
 			end
 		end
 	end
-
 end
 
 -- Sets the page specific settigs such as draw mode.
 function getCurrentPageSpecificSettings()
 	currentPageWidth = Screen.getImageWidth(currentPageImage);
 	currentPageHeight = Screen.getImageHeight(currentPageImage);
-
 
 	if currentPageWidth>399 then
 		currentDrawPageMode=2;
@@ -409,51 +448,49 @@ function loadNextPage()
 		currentPageImage=nil;
 	end
 	-- Checks if the next page exists.
-	if ((System.doesFileExist(currentPath .. currentPrefix .. currentPage .. currentImageFormat)==false)) then
+	if ((System.doesFileExist(currentPath .. string.format(currentNumberFormatString, currentPage) .. currentImageFormat)==false)) then
 		System.deleteFile(currentPath .. "_lastPage");
 		return false;
 	end
-
 	-- Finally, loads the next page
-	currentPageImage = Screen.loadImage(currentPath .. currentPrefix .. currentPage .. currentImageFormat);
-
+	currentPageImage = Screen.loadImage(currentPath .. string.format(currentNumberFormatString, currentPage) .. currentImageFormat);
 	getCurrentPageSpecificSettings();
 end
 
 -- Finds out number of zeros and format
--- Sets currentPrefix and imageformat to what it finds.
+-- Sets currentNumberFormatString and currentImageFormat to what it finds.
 -- Returns false if it failed.
 function detectMangaSettings()
 	local _result;
 	_result = detectZeros(currentPath,".jpg");
 	if (_result~=false) then
-		currentPrefix=_result;
+		currentNumberFormatString=_result;
 		currentImageFormat=".jpg";
-		return;
+		return true;
 	end
 	_result = detectZeros(currentPath,".png");
 	if (_result~=false) then
-		currentPrefix=_result;
+		currentNumberFormatString=_result;
 		currentImageFormat=".png";
-		return;
+		return true;
 	end
 	_result = detectZeros(currentPath,".bmp");
 	if (_result~=false) then
-		currentPrefix=_result;
+		currentNumberFormatString=_result;
 		currentImageFormat=".bmp";
-		return;
+		return true;
 	end
 	-- Nothing found, return false.
 	return false;
 end
 
 -- Detects number of zeros using specified file format and path.
--- Returns the prefix, or false if it couldn't find the stuff.
+-- Returns the format string for the number
 function detectZeros(_path, _format)
 	local _workPrefix="";
 	for i=1,8 do
 		if (System.doesFileExist(_path .. _workPrefix .. "1" .. _format)) then
-			return _workPrefix;
+			return "%0" .. i .. "d";
 		end
 		_workPrefix = ("0" .. _workPrefix);
 	end
@@ -476,7 +513,7 @@ end
 -- =============================================
 -- FILE SELECTOR
 -- =============================================
-local currentDirectory="/Manga/";
+local currentDirectory=(dataFilesystemPrefix .. "/Manga/");
 local currentFileList;
 local currentFileSelectorSelected;
 local currentFileSelectorOffset;
@@ -525,7 +562,11 @@ function refreshDirectory()
 
 		local _chapterStringLength;
 		local _lastChapterString;
-		fileStream = io.open(currentDirectory .. "_lastChapter",FCREATE);
+		if (currentPlatform == PLAT_3DS) then
+			fileStream = io.open(currentDirectory .. "_lastChapter",FCREATE); -- Why I was using FCREATE for this, I'll never know.
+		else
+			fileStream = io.open(currentDirectory .. "_lastChapter",FREAD);
+		end
 		_chapterStringLength = tonumber(io.read(fileStream,0,2));
 		_lastChapterString = io.read(fileStream,2,_chapterStringLength);
 		io.close(fileStream);
@@ -611,7 +652,6 @@ function fileSelectorControls()
 			currentFileSelectorSelected=1;
 			currentFileSelectorOffset=0;
 			refreshDirectory();
-			
 		end
 	elseif (isJustPressed(KEY_B)) then
 		for i=2, string.len(currentDirectory) do
@@ -635,17 +675,17 @@ end
 
 -- The file selector's main lop.
 function fileSelector()
-startDraw();
-clearScreens();
-drawList();
-Screen.debugPrint(0, 0, currentDirectory, colorWhite, BOTTOM_SCREEN)
-Screen.debugPrint(0, 32, "Press A to open selected directory", colorWhite, BOTTOM_SCREEN)
-Screen.debugPrint(0, 48, "Press B to go back a directory", colorWhite, BOTTOM_SCREEN)
-Screen.debugPrint(0, 64, "Press START to exit to title", colorWhite, BOTTOM_SCREEN)
-Screen.debugPrint(0, 80, "Hold L for really fast movement", colorWhite, BOTTOM_SCREEN)
-endDraw();
-getControls();
-fileSelectorControls();
+	startDraw();
+	clearScreens();
+	drawList();
+	Screen.debugPrint(0, 0, currentDirectory, colorWhite, BOTTOM_SCREEN)
+	Screen.debugPrint(0, 32, "Press A to open selected directory", colorWhite, BOTTOM_SCREEN)
+	Screen.debugPrint(0, 48, "Press B to go back a directory", colorWhite, BOTTOM_SCREEN)
+	Screen.debugPrint(0, 64, "Press START to exit to title", colorWhite, BOTTOM_SCREEN)
+	Screen.debugPrint(0, 80, "Hold L for really fast movement", colorWhite, BOTTOM_SCREEN)
+	endDraw();
+	getControls();
+	fileSelectorControls();
 end
 
 function destroyFileSelector()
@@ -717,7 +757,7 @@ end
 -- Draws the title screen stuff
 function titleScreenDraw()
 	Screen.debugPrint(134, 136, "Manga Reader", colorWhite, TOP_SCREEN)
-	Screen.debugPrint(0, 0, "v2.0", colorWhite, TOP_SCREEN)
+	Screen.debugPrint(0, 0, "v2.1", colorWhite, TOP_SCREEN)
 	Screen.debugPrint(150, 120, "Read", colorWhite, BOTTOM_SCREEN)
 	Screen.debugPrint(150, 136, "Download", colorWhite, BOTTOM_SCREEN)
 	Screen.debugPrint(150, 152, "Options", colorWhite, BOTTOM_SCREEN)
@@ -739,12 +779,12 @@ local numpadMessage;
 local numpadActive;
 
 function openNumpad(_message,_default)
-numpadMessage=_message;
-numpadActive=true;
-numpadInput=tostring(_default);
-numpadMainLoop();
-numpadMessage=nil;
-numpadActive=nil;
+	numpadMessage=_message;
+	numpadActive=true;
+	numpadInput=tostring(_default);
+	numpadMainLoop();
+	numpadMessage=nil;
+	numpadActive=nil;
 end
 
 function checkNumpadTouch()
@@ -805,20 +845,20 @@ end
 
 function numpadMainLoop()
 	while (numpadActive) do
-	startDraw();
-	clearScreens();
-	Screen.debugPrint(0, 0, numpadMessage, colorWhite, TOP_SCREEN)
-	Screen.debugPrint(0, 64, numpadInput, colorWhite, TOP_SCREEN)
-
-	drawNumpad()
-	getControls();
-	getTouch();
-
-	if (isJustPressed(KEY_TOUCH)) then
-		checkNumpadTouch();
-	end
+		startDraw();
+		clearScreens();
+		Screen.debugPrint(0, 0, numpadMessage, colorWhite, TOP_SCREEN)
+		Screen.debugPrint(0, 64, numpadInput, colorWhite, TOP_SCREEN)
 	
-	endDraw();
+		drawNumpad()
+		getControls();
+		getTouch();
+	
+		if (isJustPressed(KEY_TOUCH)) then
+			checkNumpadTouch();
+		end
+		
+		endDraw();
 	end
 end
 
@@ -1089,7 +1129,7 @@ end
 
 -- Saves download options with the variables
 function downloadSaveOptions()
-	local _fileStream = io.open(("/MangaReader-cfg-dl-" .. downloadOptionsFile),FCREATE);
+	local _fileStream = io.open((dataFilesystemPrefix .. "/MangaReader-cfg-dl-" .. downloadOptionsFile),FCREATE);
 	local _dataToWrite=(currentDownloadName .. "," .. currentDownloadChapterNumber .. "," .. currentDownloadSaveLocation);
 	io.write(_fileStream,0,forceTripleDigitNumber(#_dataToWrite), 3);
 	io.write(_fileStream,3,_dataToWrite,#_dataToWrite);
@@ -1105,7 +1145,7 @@ function downloadLoadOptions()
 
 	local _readData;
 	local _dataSize;
-	local _fileStream = io.open(("/MangaReader-cfg-dl-" .. downloadOptionsFile),FCREATE);
+	local _fileStream = io.open((dataFilesystemPrefix .. "/MangaReader-cfg-dl-" .. downloadOptionsFile),FCREATE);
 	
 	_dataSize = tonumber(io.read(_fileStream,0,3));
 	_readData = io.read(_fileStream,3,_dataSize)
@@ -1222,7 +1262,7 @@ initializeTitleScreen();
 		clearScreens();
 		Screen.debugPrint(0, 0, (lastFps), colorWhite, TOP_SCREEN)
 		--Screen.debugPrint(0, 32, currentImageFormat, colorWhite, TOP_SCREEN)
-		--Screen.debugPrint(0, 64, (currentPath .. currentPrefix .. currentPage .. currentImageFormat), colorWhite, TOP_SCREEN)
+		--Screen.debugPrint(0, 64, (currentPath .. "bla" .. currentPage .. currentImageFormat), colorWhite, TOP_SCREEN)
 		endDraw();
 		frames=frames+1;
 		if (Timer.getTime(fpsTimer)>=1000) then
@@ -1240,7 +1280,7 @@ end
 -- Loads options
 loadOptions();
 
--- This is a loop going on forever that determins where you are in sections.
+-- This is a loop going on forever that determines where you are in sections.
 while (true) do
 	if (currentPlace==0) then
 		mainRead();
